@@ -1,101 +1,95 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Nav } from "@/components/Nav";
+
+type SummaryItem = {
+  category: string;
+  budget: number;
+  spent: number;
+  remaining: number;
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [summary, setSummary] = useState<SummaryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    fetch("/api/categories/summary")
+      .then((r) => r.json())
+      .then((data) => setSummary(data.summary || []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function sync(pushToSheets = false) {
+    setSyncing(true);
+    setMessage("");
+    const resp = await fetch("/api/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pushToSheets }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      setMessage(
+        `Synced. Ingested ${data.ingested}, categorized ${data.categorized}, needs review ${data.needs_review}`,
+      );
+      const refreshed = await fetch("/api/categories/summary").then((r) => r.json());
+      setSummary(refreshed.summary || []);
+    } else {
+      setMessage(data.error || "Sync failed");
+    }
+    setSyncing(false);
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Nav />
+      <div className="max-w-6xl mx-auto p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Dashboard</h1>
+            <p className="text-sm text-gray-600">Month-to-date by category</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => sync(false)}
+              disabled={syncing}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              Sync Now
+            </button>
+            <button
+              onClick={() => sync(true)}
+              disabled={syncing}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              Push to Sheets
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        {message && <div className="text-sm text-gray-800">{message}</div>}
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {summary.map((item) => (
+              <div key={item.category} className="bg-white p-4 rounded shadow-sm border border-gray-100">
+                <div className="flex justify-between">
+                  <h2 className="font-semibold">{item.category}</h2>
+                  <span className="text-xs text-gray-500">Budget ${item.budget}</span>
+                </div>
+                <p className="text-sm text-gray-700 mt-2">Spent: ${item.spent.toFixed(2)}</p>
+                <p className="text-sm text-gray-700">
+                  Remaining: ${item.remaining.toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

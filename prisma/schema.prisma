@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountProvider {
+  plaid
+  csv
+}
+
+enum AccountType {
+  depository
+  credit
+  other
+}
+
+enum BalanceRole {
+  bank
+  cc1
+  cc2
+}
+
+enum TransactionStatus {
+  uncategorized
+  categorized
+  needs_review
+  ignored
+  transfer
+  removed
+}
+
+enum CategorizationSource {
+  rule
+  llm
+  manual
+}
+
+enum RulePatternType {
+  substring
+  regex
+}
+
+model Account {
+  id                  String       @id @default(uuid())
+  provider            AccountProvider
+  providerAccountId   String
+  name                String
+  type                AccountType
+  balanceCurrent      Float
+  balanceAvailable    Float?
+  mappedBalanceRole   BalanceRole?
+  transactions        Transaction[]
+  lastSyncedAt        DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@unique([provider, providerAccountId])
+}
+
+model Transaction {
+  id                       String                @id @default(uuid())
+  providerTransactionId    String                @unique
+  accountId                String
+  account                  Account               @relation(fields: [accountId], references: [id])
+  date                     DateTime
+  amountSpendNormalized    Float
+  merchant                 String?
+  description              String
+  pending                  Boolean               @default(false)
+  category                 String?
+  confidence               Float?
+  status                   TransactionStatus     @default(uncategorized)
+  categorizationSource     CategorizationSource?
+  needsReview              Boolean               @default(false)
+  isTransfer               Boolean               @default(false)
+  raw                      Json
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+}
+
+model Rule {
+  id          String          @id @default(uuid())
+  name        String
+  pattern     String
+  patternType RulePatternType
+  category    String
+  priority    Int             @default(0)
+  enabled     Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+}
+
+model SheetConfig {
+  id                      String   @id @default(uuid())
+  spreadsheetId           String
+  runningBalanceSheetName String   @default("Running Balance")
+  runningBalanceCells     Json     @default("{\"bank\":\"B2\",\"cc1\":\"D2\",\"cc2\":\"D4\"}")
+  monthlyNameFormat       String   @default("{Month} {Year}")
+  monthlyReadRange        String   @default("A1:B50")
+  googleRefreshToken      String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Settings {
+  id                   String   @id @default(uuid())
+  llmEnabled           Boolean  @default(false)
+  llmProvider          String?
+  llmModel             String?
+  confidenceThreshold  Float    @default(0.8)
+  autoSyncEnabled      Boolean  @default(false)
+  autoSyncCron         String   @default("0 9 * * *")
+  autoPushToSheets     Boolean  @default(false)
+  authDisabled         Boolean  @default(false)
+  plaidAccessTokenEnc  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+}
