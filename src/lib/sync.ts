@@ -165,7 +165,14 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
   // recompute month totals
   const monthTotals = await aggregateMonthTotals(now);
 
-  if (pushToSheets || settings.autoPushToSheets) {
+  // Only push to sheets if:
+  // 1. Explicitly requested via pushToSheets parameter, OR
+  // 2. Auto-push is enabled AND export destination is google_sheets
+  const shouldPushToSheets =
+    pushToSheets ||
+    (settings.autoPushToSheets && settings.exportDestination === "google_sheets");
+
+  if (shouldPushToSheets) {
     const accounts = await prisma.account.findMany();
     const bankBalance = accounts.find((a: { mappedBalanceRole: string | null }) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
     const cc1Balance = accounts.find((a: { mappedBalanceRole: string | null }) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;

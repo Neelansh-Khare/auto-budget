@@ -15,12 +15,18 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
+  const [exportDestination, setExportDestination] = useState<string>("native");
 
   useEffect(() => {
     fetch("/api/categories/summary")
       .then((r) => r.json())
       .then((data) => setSummary(data.summary || []))
       .finally(() => setLoading(false));
+    
+    // Get export destination from settings
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setExportDestination(data.settings?.exportDestination || "native"));
   }, []);
 
   async function sync(pushToSheets = false) {
@@ -61,13 +67,23 @@ export default function Home() {
             >
               Sync Now
             </button>
-            <button
-              onClick={() => sync(true)}
-              disabled={syncing}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              Push to Sheets
-            </button>
+            {exportDestination === "google_sheets" && (
+              <button
+                onClick={() => sync(true)}
+                disabled={syncing}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              >
+                Push to Sheets
+              </button>
+            )}
+            {exportDestination === "native" && (
+              <a
+                href="/budget"
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center"
+              >
+                View Budget
+              </a>
+            )}
           </div>
         </div>
         {message && <div className="text-sm text-gray-800">{message}</div>}

@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       autoSyncEnabled: body.autoSyncEnabled,
       autoSyncCron: body.autoSyncCron,
       autoPushToSheets: body.autoPushToSheets,
+      exportDestination: body.exportDestination || "native",
       authDisabled: body.authDisabled,
     },
     create: {
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
       autoSyncEnabled: body.autoSyncEnabled,
       autoSyncCron: body.autoSyncCron,
       autoPushToSheets: body.autoPushToSheets,
+      exportDestination: body.exportDestination || "native",
       authDisabled: body.authDisabled,
     },
   });

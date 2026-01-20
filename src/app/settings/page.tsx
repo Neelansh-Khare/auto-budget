@@ -113,18 +113,58 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
-          <h2 className="font-semibold">Google Sheets</h2>
-          <p className="text-sm text-gray-600">Connect and set Spreadsheet ID</p>
-          <input
-            value={sheet?.spreadsheetId || ""}
-            onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
-            placeholder="Spreadsheet ID"
-            className="border rounded px-2 py-1 w-full"
-          />
-          {googleUrl && (
-            <a href={googleUrl} className="text-blue-600 text-sm underline">
-              Connect Google
-            </a>
+          <h2 className="font-semibold">Export Destination</h2>
+          <p className="text-sm text-gray-600">
+            Choose where to view your budget data
+          </p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="exportDestination"
+                value="native"
+                checked={settings?.exportDestination === "native" || !settings?.exportDestination}
+                onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
+              />
+              <span className="text-sm">Native UI (Built-in Budget page)</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="exportDestination"
+                value="google_sheets"
+                checked={settings?.exportDestination === "google_sheets"}
+                onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
+              />
+              <span className="text-sm">Google Sheets (External spreadsheet)</span>
+            </label>
+          </div>
+          {settings?.exportDestination === "google_sheets" && (
+            <div className="mt-4 pt-4 border-t space-y-3">
+              <h3 className="font-medium text-sm">Google Sheets Configuration</h3>
+              <input
+                value={sheet?.spreadsheetId || ""}
+                onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
+                placeholder="Spreadsheet ID"
+                className="border rounded px-2 py-1 w-full"
+              />
+              {googleUrl && (
+                <a href={googleUrl} className="text-blue-600 text-sm underline">
+                  Connect Google
+                </a>
+              )}
+            </div>
+          )}
+          {settings?.exportDestination === "native" && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm text-gray-600">
+                View your budget on the{" "}
+                <a href="/budget" className="text-blue-600 underline">
+                  Budget page
+                </a>
+                . All data is automatically displayed there.
+              </p>
+            </div>
           )}
         </div>
 
