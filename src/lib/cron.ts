@@ -29,7 +29,11 @@ export function ensureCron() {
     }
     currentTask = cron.schedule(cronExpr, async () => {
       try {
-        await performSync({ pushToSheets: settings.autoPushToSheets });
+        // Only push to sheets if auto-push is enabled AND export destination is google_sheets
+        // The sync function will handle the export destination check, but we pass the flag
+        // based on both conditions here for clarity
+        const shouldPush = settings.autoPushToSheets && settings.exportDestination === "google_sheets";
+        await performSync({ pushToSheets: shouldPush });
       } catch (err) {
         await prisma.auditLog.create({
           data: { eventType: "cron_error", payload: { message: (err as Error).message } },

@@ -1,6 +1,6 @@
 # AutoBudgeter
 
-Automatically sync bank transactions from Chase (via Plaid), categorize spending using rules and/or LLM, and push running balances + monthly category totals to Google Sheets.
+Automatically sync bank transactions from Chase (via Plaid), categorize spending using rules and/or LLM, and view your budget in a native UI or push to Google Sheets.
 
 ## Table of Contents
 
@@ -254,10 +254,18 @@ After logging in, configure the app:
    - Assign roles: **bank**, **cc1** (credit card 1), **cc2** (credit card 2)
    - These determine which balance goes to which cell in Sheets
 
-#### 6.2 Connect Google Sheets
+#### 6.2 Choose Export Destination
 
-1. In **Settings**, click **"Connect Google"**
-2. Authorize the app to access Google Sheets
+The app supports two ways to view your budget data:
+
+**Option A: Native UI (Recommended)**
+1. In **Settings**, select **"Native UI (Built-in Budget page)"**
+2. View your budget on the **Budget** page (`/budget`)
+3. No external setup required - all data is displayed in-app
+
+**Option B: Google Sheets**
+1. In **Settings**, select **"Google Sheets (External spreadsheet)"**
+2. Click **"Connect Google"** and authorize the app
 3. **Enter your Spreadsheet ID** (from the Google Sheets URL)
 4. Verify the sheet name is **"Running Balance"** (default)
 
@@ -273,7 +281,7 @@ After logging in, configure the app:
 
 1. Enable **"Auto Sync"**
 2. Set cron expression (default: `0 9 * * *` = 9 AM daily)
-3. Enable **"Auto Push to Sheets"** to automatically update Sheets after sync
+3. If using Google Sheets, enable **"Auto Push to Sheets"** to automatically update Sheets after sync
 
 ## Usage Guide
 
@@ -291,6 +299,7 @@ After logging in, configure the app:
 **View results:**
 - Check **Transactions** (`/transactions`) to see all transactions
 - Check **Needs Review** (`/review`) for uncategorized or low-confidence items
+- View **Budget** (`/budget`) to see running balances and monthly category breakdown
 
 ### Categorize Transactions
 
@@ -312,19 +321,29 @@ After logging in, configure the app:
 3. Select new category
 4. The monthly totals will automatically recompute
 
-### Push to Google Sheets
+### View Budget
 
-**Manual push:**
-1. Go to **Dashboard**
-2. Click **"Push to Sheets"**
+**Native UI (Default):**
+1. Go to **Budget** (`/budget`)
+2. View:
+   - **Running Balances**: Bank account, Credit Card 1, Credit Card 2
+   - **Monthly Category Breakdown**: Budget vs Spent vs Remaining for each category
+   - **Progress Bars**: Visual indicators showing spending progress
+   - **Summary Stats**: Total budget, total spent, remaining budget
+3. Use the month selector to view different months
+4. Data updates automatically after each sync
+
+**Google Sheets (Optional):**
+1. In **Settings**, select **"Google Sheets"** as export destination
+2. Go to **Dashboard** and click **"Push to Sheets"**
 3. The app will:
    - Update **Running Balance** tab: B2 (bank), D2 (cc1), D4 (cc2)
    - Update or create monthly sheet (e.g., "January 2026")
    - Write category totals to Column B based on Column A labels
 
-**Automatic push:**
+**Automatic push (Google Sheets only):**
 - Enable **"Auto Push to Sheets"** in Settings
-- Sheets will update after each sync
+- Sheets will update after each sync (only when Google Sheets is selected as export destination)
 
 ### Manage Rules
 
@@ -468,7 +487,7 @@ PORT=3001 npm run dev
 5. **LLM categorization** (if enabled and no rule matched)
 6. **Mark for review** (if confidence < threshold)
 7. **Recompute** monthly totals from DB ledger
-8. **Push to Sheets** (if enabled)
+8. **Push to Sheets** (if Google Sheets export is enabled) OR **Display in Native UI** (default)
 
 ### File Structure
 
@@ -477,21 +496,28 @@ autobudgeter/
 ├── src/
 │   ├── app/              # Next.js App Router pages
 │   │   ├── api/          # API routes
-│   │   ├── auth/         # Auth pages
-│   │   └── [pages]/      # UI pages
-│   ├── lib/              # Core logic
-│   │   ├── plaid.ts      # Plaid integration
-│   │   ├── sheets.ts     # Google Sheets integration
-│   │   ├── sync.ts       # Sync orchestration
-│   │   ├── rules.ts      # Rules engine
-│   │   ├── llm/          # LLM adapters
-│   │   └── aggregation.ts # Month totals
-│   ├── components/       # React components
-│   └── tests/            # Unit tests
+│   │   │   ├── budget/   # Budget data endpoint
+│   │   │   ├── sync/    # Sync endpoint
+│   │   │   ├── sheets/  # Google Sheets push
+│   │   │   └── ...      # Other API routes
+│   │   ├── auth/        # Auth pages
+│   │   ├── budget/       # Native Budget page
+│   │   └── [pages]/     # Other UI pages
+│   ├── lib/             # Core logic
+│   │   ├── plaid.ts     # Plaid integration
+│   │   ├── sheets.ts    # Google Sheets integration
+│   │   ├── sync.ts      # Sync orchestration
+│   │   ├── rules.ts     # Rules engine
+│   │   ├── llm/         # LLM adapters
+│   │   ├── aggregation.ts # Month totals
+│   │   └── cron.ts      # Scheduled sync
+│   ├── components/      # React components
+│   └── tests/           # Unit tests
 ├── prisma/
-│   └── schema.prisma     # Database schema
-├── docker-compose.yml    # Postgres setup
-└── .env.local            # Environment variables (not in git)
+│   └── schema.prisma    # Database schema
+├── docker-compose.yml   # Postgres setup
+├── .env.example         # Environment variables template
+└── .env.local          # Environment variables (not in git)
 ```
 
 ## Development
