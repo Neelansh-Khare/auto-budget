@@ -77,6 +77,15 @@ A comprehensive list of all features and capabilities in the AutoBudgeter applic
 - ✅ Dynamic category mapping
 - ✅ Formula protection (SUM rows never overwritten)
 
+### Manual Transaction Import
+- ✅ Import transactions from CSV files
+- ✅ Smart parsing for common CSV transaction formats (Date, Description, Amount, Merchant)
+- ✅ Import transactions from plain text statements (e.g., copied from PDF) via LLM parsing
+- ✅ LLM extracts structured transaction data (date, description, amount, merchant) from unstructured text
+- ✅ Deduplication for imported transactions using generated IDs
+- ✅ Transactions linked to dedicated "Manual CSV Account" or "LLM Imported Account"
+- ✅ Auto-sets status to "uncategorized" for review
+
 ### User Interface
 - ✅ Dashboard with category overview
 - ✅ Budget page with detailed breakdown
@@ -111,11 +120,10 @@ A comprehensive list of all features and capabilities in the AutoBudgeter applic
 
 ### Data Flow
 
-1. **Sync Process:**
-   - User triggers sync (manual or scheduled)
-   - Fetch accounts and balances from Plaid
-   - Fetch new transactions since last sync
-   - Normalize transaction amounts (expenses positive)
+1. **Transaction Ingestion Process:**
+   - **Plaid Sync:** User triggers sync (manual or scheduled) to fetch accounts and balances from Plaid, and new transactions since last sync.
+   - **Manual Import:** User uploads CSV files or text statements (parsed by LLM) via the `/upload` page.
+   - Normalize transaction amounts (expenses positive, refunds negative)
    - Apply rules in priority order
    - If no rule matches and LLM enabled, categorize with LLM
    - Mark low-confidence transactions for review
@@ -178,6 +186,8 @@ A comprehensive list of all features and capabilities in the AutoBudgeter applic
 - `GET /api/budget` - Get budget data for native UI
 - `GET /api/categories/summary` - Get category summary
 - `POST /api/sheets/push` - Push data to Google Sheets
+- `POST /api/upload/csv` - Upload and process CSV transaction data
+- `POST /api/upload/llm` - Upload and process statement text via LLM
 
 **Configuration APIs:**
 - `GET/POST /api/settings` - Manage app settings

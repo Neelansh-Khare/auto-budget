@@ -404,11 +404,12 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Offline support
 
 ### Data Import/Export
-- [ ] **CSV Import**
-  - [ ] Chase CSV import
-  - [ ] Generic bank CSV import
-  - [ ] CSV mapping interface
-  - [ ] Import validation
+- [x] **Manual Transaction Import**
+  - [x] CSV Import (Basic parsing of Date, Description, Amount, Merchant)
+  - [ ] CSV mapping interface (Future enhancement)
+  - [ ] Advanced CSV Import validation (Future enhancement)
+  - [x] LLM Statement Import (Basic parsing of plain text statements)
+  - [ ] PDF parsing for LLM import (Future enhancement)
 
 - [ ] **Data Export**
   - [ ] Full data export
@@ -506,7 +507,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 1. Budget planning and alerts
 2. Advanced analytics
 3. Recurring transaction detection
-4. CSV import functionality
+4. [x] Manual transaction import functionality (CSV & LLM)
 
 ### Phase 4: Scale & Optimize (Ongoing)
 1. Performance optimization

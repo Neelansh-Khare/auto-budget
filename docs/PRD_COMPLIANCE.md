@@ -145,18 +145,18 @@
 
 ## ⚠️ Optional / Deferred
 
-### CSV Import Fallback
-**Status:** ❌ Not implemented (deferred)
+### Manual Transaction Import
+**Status:** ✅ **Implemented**
 
 **PRD Requirement:**
 > "Fallback: user manual CSV import (Chase export) if aggregator not available"
 
-**Current State:**
-- ❌ No CSV import functionality
-- ❌ No CSV parser
-- ❌ No UI for CSV upload
+**Implementation:**
+- ✅ CSV Import functionality via `/api/upload/csv` endpoint and `/upload` UI page.
+- ✅ LLM Statement Import functionality via `/api/upload/llm` endpoint and `/upload` UI page (for plain text statements).
+- ✅ Transactions are added to a dedicated "Manual CSV Account" or "LLM Imported Account".
 
-**Note:** This is listed as a fallback/assumption in the PRD, not a hard requirement. Can be added later if needed.
+**Note:** The initial PRD focused on CSV as a fallback. This has been expanded to include LLM parsing of text statements. Further enhancements (e.g., PDF parsing, CSV mapping interface) are noted in `NEXT_STEPS.md`.
 
 ## Summary
 

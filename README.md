@@ -1,6 +1,6 @@
 # AutoBudgeter
 
-Automatically sync bank transactions from Chase (via Plaid), categorize spending using rules and/or LLM, and view your budget in a native UI or push to Google Sheets.
+Automatically sync bank transactions from Chase (via Plaid), **or manually import from CSV/statements (parsed by LLM),** categorize spending using rules and/or LLM, and view your budget in a native UI or push to Google Sheets.
 
 ## Table of Contents
 
@@ -301,6 +301,18 @@ The app supports two ways to view your budget data:
 - Check **Needs Review** (`/review`) for uncategorized or low-confidence items
 - View **Budget** (`/budget`) to see running balances and monthly category breakdown
 
+### Import Transactions (Manual)
+
+1.  Go to **Upload** (`/upload`)
+2.  Choose your upload type:
+    *   **CSV Upload**: For CSV files containing transaction data (e.g., from bank statement exports).
+        *   Expected columns: `Date`, `Description`, `Amount` (and optionally `Merchant`).
+        *   Amounts should be normalized (e.g., positive for expenses, negative for income). If separate debit/credit columns are present, ensure only one contains a value per row.
+    *   **Statement (LLM) Upload**: For plain text files (e.g., copied text from a PDF statement).
+        *   The LLM will parse the text to extract transaction details.
+3.  Select your file and click **"Upload and Process"**.
+4.  Extracted transactions will be added to a dedicated "Manual CSV Account" or "LLM Imported Account" in the system, with a status of "uncategorized" or "needs_review" for further action.
+
 ### Categorize Transactions
 
 **Automatic (with LLM):**
@@ -459,7 +471,7 @@ PORT=3001 npm run dev
 ### Key Concepts
 
 **Idempotency:**
-- Transactions are deduplicated by `provider_transaction_id`
+- Transactions are deduplicated by `provider_transaction_id`. For Plaid transactions, this is provided by Plaid. For manual CSV/LLM imports, a unique ID is generated based on transaction details to prevent duplicates on re-upload.
 - Monthly totals are **always recomputed** from the database ledger
 - Never incremental updates (prevents double-counting)
 
@@ -480,14 +492,15 @@ PORT=3001 npm run dev
 
 ### Data Flow
 
-1. **Sync triggered** (manual or cron)
-2. **Fetch** balances + new transactions from Plaid
-3. **Normalize** transactions (expenses positive, refunds negative)
-4. **Apply rules** (substring/regex matching)
-5. **LLM categorization** (if enabled and no rule matched)
-6. **Mark for review** (if confidence < threshold)
-7. **Recompute** monthly totals from DB ledger
-8. **Push to Sheets** (if Google Sheets export is enabled) OR **Display in Native UI** (default)
+1. **Data Ingestion** (Choose one):
+   - **Sync triggered** (manual or cron) to fetch balances + new transactions from Plaid.
+   - **Manual Import** (via `/upload` page) of CSV files or text statements (parsed by LLM) to add new transactions.
+2. **Normalize** transactions (expenses positive, refunds negative)
+3. **Apply rules** (substring/regex matching)
+4. **LLM categorization** (if enabled and no rule matched)
+5. **Mark for review** (if confidence < threshold)
+6. **Recompute** monthly totals from DB ledger
+7. **Push to Sheets** (if Google Sheets export is enabled) OR **Display in Native UI** (default)
 
 ### File Structure
 
@@ -499,9 +512,13 @@ autobudgeter/
 │   │   │   ├── budget/   # Budget data endpoint
 │   │   │   ├── sync/    # Sync endpoint
 │   │   │   ├── sheets/  # Google Sheets push
+│   │   │   ├── upload/  # Manual upload endpoints
+│   │   │   │   ├── csv/ # CSV upload
+│   │   │   │   └── llm/ # LLM statement upload
 │   │   │   └── ...      # Other API routes
 │   │   ├── auth/        # Auth pages
 │   │   ├── budget/       # Native Budget page
+│   │   ├── upload/      # Manual upload UI page
 │   │   └── [pages]/     # Other UI pages
 │   ├── lib/             # Core logic
 │   │   ├── plaid.ts     # Plaid integration
