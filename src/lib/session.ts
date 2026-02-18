@@ -5,7 +5,11 @@ export type SessionData = {
   authenticated?: boolean;
 };
 
-const password = process.env.ENCRYPTION_KEY || "dev-secret-please-change";
+const password = process.env.ENCRYPTION_KEY;
+
+if (!password || password.length < 32) {
+  throw new Error("ENCRYPTION_KEY environment variable is not set or is too short. It must be at least 32 characters long for iron-session.");
+}
 
 export const sessionOptions: SessionOptions = {
   password,

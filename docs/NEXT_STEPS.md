@@ -2,6 +2,9 @@
 
 This document outlines the roadmap for improving and expanding AutoBudgeter.
 
+
+## RE AUDIT ENTIRE REPO
+
 ## 1. Polish Frontend UI
 
 ### Visual Design Improvements
