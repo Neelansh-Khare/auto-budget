@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { matchRule } from "@/lib/rules";
+import { RulePatternType } from "@/generated/prisma/enums";
 
 describe("rules engine", () => {
   const rules = [
@@ -7,13 +8,13 @@ describe("rules engine", () => {
       id: "1",
       name: "food",
       pattern: "mcdonald",
-      patternType: "substring",
+      patternType: RulePatternType.substring,
       category: "Food",
       priority: 1,
       enabled: true,
       createdAt: new Date(),
     },
-  ] as any;
+  ];
 
   it("matches substring ignoring case", () => {
     const res = matchRule(rules, "McDonalds", "McDonalds #123");

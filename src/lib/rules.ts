@@ -30,7 +30,7 @@ export function matchRule(
         if (regex.test(haystack)) {
           return { category: rule.category, ruleId: rule.id };
         }
-      } catch (err) {
+      } catch {
         // ignore invalid regex but keep scanning
       }
     }

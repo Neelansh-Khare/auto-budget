@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
 import { DateTime } from "luxon";
 
@@ -22,11 +22,7 @@ export default function BudgetPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  useEffect(() => {
-    loadBudget();
-  }, [selectedMonth]);
-
-  async function loadBudget() {
+  const loadBudget = useCallback(async () => {
     setLoading(true);
     try {
       const monthParam = DateTime.fromJSDate(selectedMonth).toFormat("yyyy-MM");
@@ -38,7 +34,11 @@ export default function BudgetPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    loadBudget();
+  }, [loadBudget]);
 
   function formatCurrency(amount: number) {
     return new Intl.NumberFormat("en-US", {
@@ -51,13 +51,6 @@ export default function BudgetPage() {
   function getPercentageUsed(spent: number, budget: number) {
     if (budget === 0) return 0;
     return Math.min(100, (spent / budget) * 100);
-  }
-
-  function getStatusColor(remaining: number, budget: number) {
-    const percentage = getPercentageUsed(budget - remaining, budget);
-    if (percentage >= 100) return "bg-red-100 text-red-800 border-red-300";
-    if (percentage >= 80) return "bg-yellow-100 text-yellow-800 border-yellow-300";
-    return "bg-green-100 text-green-800 border-green-300";
   }
 
   function getMonthOptions() {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { TransactionStatus } from "@/generated/prisma/enums";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
 
   const transactions = await prisma.transaction.findMany({
     where: {
-      status: status ? (status as any) : undefined,
+      status: status ? (status as TransactionStatus) : undefined,
       category: category || undefined,
       accountId,
       date: {

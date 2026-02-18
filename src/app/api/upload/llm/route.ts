@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from 'uuid';
-import { AccountProvider, AccountType, TransactionStatus } from "@prisma/client";
-import { getLLMResponse } from "@/lib/llm";
+import { AccountProvider, AccountType, TransactionStatus } from "@/generated/prisma/enums";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
-import { Buffer } from 'buffer'; // Add this import
 
 // Define the expected structure of a single transaction from the LLM
 const LLMTransactionSchema = z.object({
@@ -66,21 +65,31 @@ export async function POST(request: Request) {
     
     JSON Output:`;
 
-    const llmRawResponse = await getLLMResponse({
-        systemInstruction: systemInstruction,
-        userMessage: userMessage,
-        // Assuming getLLMResponse can take a zod schema for output validation
-        // If not, we'll parse and validate the string response ourselves
+    // Use Gemini API for LLM extraction
+    const apiKey = process.env.GEMINI_API_KEY;
+    const modelName = process.env.GEMINI_MODEL;
+    if (!apiKey || !modelName) {
+      return NextResponse.json({ error: "Gemini API credentials not configured." }, { status: 500 });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelName });
+    const prompt = `${systemInstruction}\n\n${userMessage}`;
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json" },
     });
+
+    const llmRawResponse = result.response.text();
 
     let llmParsedData: z.infer<typeof LLMTransactionsResponseSchema>;
     try {
-        // Assuming llmRawResponse is already the JSON string from the LLM
-        // If getLLMResponse returns a structured object, this step might change
         llmParsedData = LLMTransactionsResponseSchema.parse(JSON.parse(llmRawResponse));
-    } catch (parseError: any) {
+    } catch (parseError: unknown) {
         console.error("LLM Response Parsing Error:", parseError);
-        return NextResponse.json({ error: "Failed to parse LLM response.", details: parseError.message }, { status: 500 });
+        const errorMessage = parseError instanceof Error ? parseError.message : "Unknown parsing error";
+        return NextResponse.json({ error: "Failed to parse LLM response.", details: errorMessage }, { status: 500 });
     }
 
     const transactionsToCreate = llmParsedData.transactions.map(tx => ({
@@ -106,8 +115,9 @@ export async function POST(request: Request) {
       message: `Successfully processed statement and extracted ${transactionsToCreate.length} transactions.`,
       accountId: accountId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("LLM Statement Upload Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to upload statement for LLM processing." }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "Failed to upload statement for LLM processing.";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

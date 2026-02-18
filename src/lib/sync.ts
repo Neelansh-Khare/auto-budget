@@ -130,7 +130,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
             console.warn("Failed to auto-create rule:", err);
           }
         }
-      } catch (err) {
+      } catch {
         status = TransactionStatus.needs_review;
         needsReview = true;
       }
@@ -154,7 +154,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
         categorizationSource: source,
         needsReview,
         isTransfer,
-        raw: t as any,
+        raw: JSON.parse(JSON.stringify(t)),
       },
     });
     ingested += 1;
@@ -174,9 +174,9 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
 
   if (shouldPushToSheets) {
     const accounts = await prisma.account.findMany();
-    const bankBalance = accounts.find((a: { mappedBalanceRole: string | null }) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
-    const cc1Balance = accounts.find((a: { mappedBalanceRole: string | null }) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;
-    const cc2Balance = accounts.find((a: { mappedBalanceRole: string | null }) => a.mappedBalanceRole === "cc2")?.balanceCurrent ?? 0;
+    const bankBalance = accounts.find((a) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
+    const cc1Balance = accounts.find((a) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;
+    const cc2Balance = accounts.find((a) => a.mappedBalanceRole === "cc2")?.balanceCurrent ?? 0;
     await pushAllToSheets({ bank: bankBalance, cc1: cc1Balance, cc2: cc2Balance, date: now });
   }
 

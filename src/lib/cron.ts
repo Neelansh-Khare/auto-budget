@@ -3,7 +3,6 @@ import { performSync } from "./sync";
 import { prisma } from "./prisma";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __cronRegistered: boolean | undefined;
 }
 

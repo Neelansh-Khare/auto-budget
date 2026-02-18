@@ -48,8 +48,9 @@ export default function UploadPage() {
       } else {
         setError(data.error || "An unknown error occurred during upload.");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to connect to the server.");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to connect to the server.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

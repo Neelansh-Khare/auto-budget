@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import csvParser from "csv-parser";
 import { Readable } from "stream";
 import { v4 as uuidv4 } from 'uuid';
-import { AccountProvider, AccountType, TransactionStatus } from "@prisma/client";
+import { AccountProvider, AccountType, TransactionStatus } from "@/generated/prisma/enums";
+import { Prisma } from "@/generated/prisma";
 import { Buffer } from 'buffer'; // Add this import
 
 // Define expected CSV headers and their mapping to Transaction fields
@@ -47,8 +48,17 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const stream = Readable.from(buffer.toString());
 
-    const transactions: any[] = [];
-    let accountId: string;
+    const transactions: Array<{
+      providerTransactionId: string;
+      accountId: string;
+      date: Date;
+      amountSpendNormalized: number;
+      merchant: string | null;
+      description: string;
+      pending: boolean;
+      status: TransactionStatus;
+      raw: Prisma.InputJsonValue;
+    }> = [];
 
     // Ensure a CSV account exists or create one
     let csvAccount = await prisma.account.findFirst({
@@ -66,7 +76,7 @@ export async function POST(request: Request) {
         },
       });
     }
-    accountId = csvAccount.id;
+    const accountId = csvAccount.id;
 
     await new Promise((resolve, reject) => {
       stream
@@ -130,10 +140,10 @@ export async function POST(request: Request) {
               description: descriptionStr,
               pending: false, // CSVs are usually settled transactions
               status: TransactionStatus.uncategorized,
-              raw: row, // Store original CSV row
+              raw: row as Prisma.InputJsonValue, // Store original CSV row
             });
-          } catch (e: any) {
-            console.error("Error processing row:", row, e.message);
+          } catch (e: unknown) {
+            console.error("Error processing row:", row, e instanceof Error ? e.message : String(e));
           }
         })
         .on("end", resolve)
@@ -151,8 +161,8 @@ export async function POST(request: Request) {
       message: `Successfully uploaded ${transactions.length} transactions.`,
       accountId: accountId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("CSV Upload Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to upload CSV." }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to upload CSV." }, { status: 500 });
   }
 }

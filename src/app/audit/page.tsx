@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 
-type Log = { id: string; eventType: string; payload: any; createdAt: string };
+type Log = { id: string; eventType: string; payload: Record<string, unknown>; createdAt: string };
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<Log[]>([]);

@@ -16,7 +16,6 @@ export async function middleware(req: NextRequest) {
 
   // iron-session helper for NextRequest
   const res = NextResponse.next();
-  // @ts-ignore iron-session overload for request/response objects
   const session = await getIronSession<SessionData>(req, res, sessionOptions);
 
   if (session.authenticated) {

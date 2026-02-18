@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
 
 type Tx = {
@@ -19,17 +19,17 @@ export default function TransactionsPage() {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (search) params.set("search", search);
     const data = await fetch(`/api/transactions?${params.toString()}`).then((r) => r.json());
     setTransactions(data.transactions || []);
-  }
+  }, [status, search]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function updateCategory(id: string, category: string) {
     await fetch(`/api/transactions/${id}`, {

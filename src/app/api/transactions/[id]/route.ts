@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { aggregateMonthTotals, getMonthKey } from "@/lib/aggregation";
 import { pushAllToSheets } from "@/lib/sheets";
-import { CATEGORY_BUDGETS } from "@/lib/constants";
 
 export async function PATCH(
   req: Request,

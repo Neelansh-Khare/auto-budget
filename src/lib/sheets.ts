@@ -5,7 +5,7 @@ import { decrypt, encrypt } from "./encryption";
 import { CATEGORY_BUDGETS } from "./constants";
 import { aggregateMonthTotals, getMonthKey } from "./aggregation";
 
-export function buildCategoryRowMap(rows: any[][]) {
+export function buildCategoryRowMap(rows: string[][]) {
   const map = new Map<string, number>();
   rows.forEach((row, idx) => {
     const label = row[0];
@@ -150,7 +150,7 @@ export async function updateMonthlySheet(date: Date) {
   const map = buildCategoryRowMap(rows);
 
   const totals = await aggregateMonthTotals(date);
-  const updates: { range: string; values: any[][] }[] = [];
+  const updates: { range: string; values: (string | number)[][] }[] = [];
   totals.forEach((value, category) => {
     const rowIdx = map.get(category);
     if (rowIdx === undefined) return;

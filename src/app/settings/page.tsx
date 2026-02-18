@@ -8,8 +8,8 @@ import { BALANCE_ROLES } from "@/lib/constants";
 type Account = { id: string; name: string; mappedBalanceRole: string | null };
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<any>(null);
-  const [sheet, setSheet] = useState<any>(null);
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  const [sheet, setSheet] = useState<Record<string, unknown> | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [googleUrl, setGoogleUrl] = useState("");
@@ -47,7 +47,7 @@ export default function SettingsPage() {
     setMessage("Saved settings");
   }
 
-  const onSuccess = useCallback(async (publicToken: string, metadata: any) => {
+  const onSuccess = useCallback(async (publicToken: string, metadata: { institution?: { name?: string } }) => {
     const resp = await fetch("/api/plaid/exchange", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
