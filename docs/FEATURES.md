@@ -536,7 +536,6 @@ A comprehensive list of all features and capabilities in the AutoBudgeter applic
 
 ## Future Enhancements (Optional)
 
-- CSV import fallback for manual transaction entry
 - Multi-user support with user accounts
 - Budget alerts and notifications
 - Advanced analytics and reporting
