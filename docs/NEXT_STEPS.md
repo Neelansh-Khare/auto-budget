@@ -6,11 +6,11 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 
 ### Visual Design Improvements
 - [ ] **Modern Design System**
-  - Implement consistent color palette and typography
-  - Add dark mode support
-  - Improve spacing and layout consistency
-  - Add smooth transitions and animations
-  - Implement loading skeletons instead of "Loading..." text
+  - [x] Implement consistent color palette and typography (Geist font, semantic colors)
+  - [ ] Add dark mode support
+  - [ ] Improve spacing and layout consistency
+  - [ ] Add smooth transitions and animations
+  - [ ] Implement loading skeletons instead of "Loading..." text
 
 - [ ] **Budget Page Enhancements**
   - Add charts and graphs (spending trends, category breakdown pie chart)
@@ -50,7 +50,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 ### User Experience Enhancements
 - [ ] **Navigation**
   - Breadcrumb navigation
-  - Active page highlighting
+  - [x] Active page highlighting
   - Mobile-responsive navigation menu
   - Keyboard navigation support
 
