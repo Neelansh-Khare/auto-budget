@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { Nav } from "@/components/Nav";
+import { useToast } from "@/components/ToastContext";
 import { BALANCE_ROLES } from "@/lib/constants";
 
 type Account = { id: string; name: string; mappedBalanceRole: string | null };
@@ -13,7 +14,7 @@ export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [googleUrl, setGoogleUrl] = useState("");
-  const [message, setMessage] = useState("");
+  const { success, error } = useToast();
 
   async function load() {
     const data = await fetch("/api/settings").then((r) => r.json());
@@ -35,16 +36,24 @@ export default function SettingsPage() {
   }, []);
 
   async function save() {
-    await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...settings,
-        sheet,
-        accountRoles: accounts.map((a) => ({ id: a.id, role: a.mappedBalanceRole })),
-      }),
-    });
-    setMessage("Saved settings");
+    try {
+      const resp = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...settings,
+          sheet,
+          accountRoles: accounts.map((a) => ({ id: a.id, role: a.mappedBalanceRole })),
+        }),
+      });
+      if (resp.ok) {
+        success("Settings saved successfully");
+      } else {
+        error("Failed to save settings");
+      }
+    } catch (err) {
+      error("An error occurred while saving settings");
+    }
   }
 
   const onSuccess = useCallback(async (publicToken: string, metadata: { institution?: { name?: string } }) => {
@@ -57,12 +66,12 @@ export default function SettingsPage() {
       }),
     });
     if (resp.ok) {
-      setMessage("Plaid connected successfully");
+      success("Plaid connected successfully");
       await load(); // Reload to show new accounts
     } else {
-      setMessage("Plaid connection failed");
+      error("Plaid connection failed");
     }
-  }, []);
+  }, [success, load]);
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
@@ -74,7 +83,6 @@ export default function SettingsPage() {
       <Nav />
       <div className="max-w-4xl mx-auto p-6 space-y-4">
         <h1 className="text-2xl font-semibold">Settings</h1>
-        {message && <p className="text-sm text-green-700">{message}</p>}
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
           <h2 className="font-semibold">LLM</h2>
           <label className="flex items-center gap-2 text-sm">

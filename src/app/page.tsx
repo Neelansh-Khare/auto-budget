@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { useToast } from "@/components/ToastContext";
 
 type SummaryItem = {
   category: string;
@@ -14,8 +15,8 @@ export default function Home() {
   const [summary, setSummary] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [message, setMessage] = useState("");
   const [exportDestination, setExportDestination] = useState<string>("native");
+  const { success, error, info } = useToast();
 
   useEffect(() => {
     fetch("/api/categories/summary")
@@ -31,23 +32,28 @@ export default function Home() {
 
   async function sync(pushToSheets = false) {
     setSyncing(true);
-    setMessage("");
-    const resp = await fetch("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pushToSheets }),
-    });
-    const data = await resp.json();
-    if (resp.ok) {
-      setMessage(
-        `Synced. Ingested ${data.ingested}, categorized ${data.categorized}, needs review ${data.needs_review}`,
-      );
-      const refreshed = await fetch("/api/categories/summary").then((r) => r.json());
-      setSummary(refreshed.summary || []);
-    } else {
-      setMessage(data.error || "Sync failed");
+    info("Starting sync...");
+    try {
+      const resp = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pushToSheets }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        success(
+          `Sync complete. Ingested ${data.ingested}, categorized ${data.categorized}, needs review ${data.needs_review}`,
+        );
+        const refreshed = await fetch("/api/categories/summary").then((r) => r.json());
+        setSummary(refreshed.summary || []);
+      } else {
+        error(data.error || "Sync failed");
+      }
+    } catch (err) {
+      error("An error occurred during sync");
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   }
 
   return (
@@ -86,7 +92,6 @@ export default function Home() {
             )}
           </div>
         </div>
-        {message && <div className="text-sm text-gray-800">{message}</div>}
         {loading ? (
           <p>Loading...</p>
         ) : (

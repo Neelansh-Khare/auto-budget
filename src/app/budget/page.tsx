@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
+import { Skeleton } from "@/components/Skeleton";
 import { DateTime } from "luxon";
 
 type CategoryItem = {
@@ -74,9 +75,15 @@ export default function BudgetPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Budget Overview</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {data?.month.label || "Loading..."}
-            </p>
+            <div className="h-5 mt-1">
+              {loading ? (
+                <Skeleton className="w-32 h-4" />
+              ) : (
+                <p className="text-sm text-gray-600">
+                  {data?.month.label}
+                </p>
+              )}
+            </div>
           </div>
           <div>
             <select
@@ -103,19 +110,19 @@ export default function BudgetPage() {
             <div className="border rounded-lg p-4">
               <div className="text-sm text-gray-600 mb-1">Bank Account</div>
               <div className="text-2xl font-bold text-gray-900">
-                {loading ? "..." : formatCurrency(data?.balances.bank ?? 0)}
+                {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(data?.balances.bank ?? 0)}
               </div>
             </div>
             <div className="border rounded-lg p-4">
               <div className="text-sm text-gray-600 mb-1">Credit Card 1</div>
               <div className="text-2xl font-bold text-gray-900">
-                {loading ? "..." : formatCurrency(data?.balances.cc1 ?? 0)}
+                {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(data?.balances.cc1 ?? 0)}
               </div>
             </div>
             <div className="border rounded-lg p-4">
               <div className="text-sm text-gray-600 mb-1">Credit Card 2</div>
               <div className="text-2xl font-bold text-gray-900">
-                {loading ? "..." : formatCurrency(data?.balances.cc2 ?? 0)}
+                {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(data?.balances.cc2 ?? 0)}
               </div>
             </div>
           </div>
@@ -126,32 +133,40 @@ export default function BudgetPage() {
           <div className="px-6 py-4 border-b bg-gray-50">
             <h2 className="text-xl font-semibold">Monthly Category Breakdown</h2>
           </div>
-          {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Budget
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Spent
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Remaining
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-48">
-                      Progress
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {data?.categories.map((item) => {
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Budget
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Spent
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Remaining
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-48">
+                    Progress
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-6 py-4"><Skeleton className="w-24 h-4" /></td>
+                      <td className="px-6 py-4"><Skeleton className="w-16 h-4 ml-auto" /></td>
+                      <td className="px-6 py-4"><Skeleton className="w-16 h-4 ml-auto" /></td>
+                      <td className="px-6 py-4"><Skeleton className="w-16 h-4 ml-auto" /></td>
+                      <td className="px-6 py-4"><Skeleton className="w-full h-2" /></td>
+                    </tr>
+                  ))
+                ) : (
+                  data?.categories.map((item) => {
                     const percentage = getPercentageUsed(item.spent, item.budget);
                     return (
                       <tr key={item.category} className="hover:bg-gray-50">
@@ -190,8 +205,10 @@ export default function BudgetPage() {
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
+                  })
+                )}
+              </tbody>
+              {!loading && (
                 <tfoot className="bg-gray-50 border-t-2">
                   <tr>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
@@ -231,9 +248,9 @@ export default function BudgetPage() {
                     </td>
                   </tr>
                 </tfoot>
-              </table>
-            </div>
-          )}
+              )}
+            </table>
+          </div>
         </div>
 
         {/* Summary Stats */}
@@ -241,27 +258,27 @@ export default function BudgetPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="text-sm text-blue-700 mb-1">Total Budget</div>
             <div className="text-2xl font-bold text-blue-900">
-              {formatCurrency(totalBudget)}
+              {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(totalBudget)}
             </div>
           </div>
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="text-sm text-orange-700 mb-1">Total Spent</div>
             <div className="text-2xl font-bold text-orange-900">
-              {formatCurrency(totalSpent)}
+              {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(totalSpent)}
             </div>
           </div>
           <div
-            className={`border rounded-lg p-4 ${totalRemaining < 0 ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}
+            className={`border rounded-lg p-4 ${loading ? "bg-gray-50 border-gray-200" : totalRemaining < 0 ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}
           >
             <div
-              className={`text-sm mb-1 ${totalRemaining < 0 ? "text-red-700" : "text-green-700"}`}
+              className={`text-sm mb-1 ${loading ? "text-gray-700" : totalRemaining < 0 ? "text-red-700" : "text-green-700"}`}
             >
               Remaining Budget
             </div>
             <div
-              className={`text-2xl font-bold ${totalRemaining < 0 ? "text-red-900" : "text-green-900"}`}
+              className={`text-2xl font-bold ${loading ? "text-gray-900" : totalRemaining < 0 ? "text-red-900" : "text-green-900"}`}
             >
-              {formatCurrency(totalRemaining)}
+              {loading ? <Skeleton className="w-24 h-8" /> : formatCurrency(totalRemaining)}
             </div>
           </div>
         </div>

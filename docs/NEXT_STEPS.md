@@ -10,21 +10,21 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Add dark mode support
   - [ ] Improve spacing and layout consistency
   - [ ] Add smooth transitions and animations
-  - [ ] Implement loading skeletons instead of "Loading..." text
+  - [x] Implement loading skeletons instead of "Loading..." text
 
 - [ ] **Budget Page Enhancements**
   - Add charts and graphs (spending trends, category breakdown pie chart)
   - Interactive budget vs actual comparison visualizations
   - Month-over-month comparison view
-  - Budget progress indicators with better visual feedback
-  - Color-coded spending alerts (green/yellow/red thresholds)
+  - [x] Budget progress indicators with better visual feedback
+  - [x] Color-coded spending alerts (green/yellow/red thresholds)
 
 - [ ] **Dashboard Improvements**
-  - Add summary cards with key metrics
-  - Quick action buttons
+  - [x] Add summary cards with key metrics
+  - [x] Quick action buttons
   - Recent transactions widget
   - Spending trends chart
-  - Budget status overview
+  - [x] Budget status overview
 
 - [ ] **Transaction List Enhancements**
   - Better table design with sortable columns
@@ -36,8 +36,8 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 - [ ] **Review Page Improvements**
   - Better queue management
   - Keyboard shortcuts for faster categorization
-  - Batch operations UI
-  - Confidence score visualization
+  - [x] Batch operations UI
+  - [x] Confidence score visualization
   - Suggested categories based on history
 
 - [ ] **Settings Page Redesign**
@@ -51,11 +51,11 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 - [ ] **Navigation**
   - Breadcrumb navigation
   - [x] Active page highlighting
-  - Mobile-responsive navigation menu
+  - Mobile-responsive navigation menu (Basic overflow implemented)
   - Keyboard navigation support
 
 - [ ] **Feedback & Notifications**
-  - Toast notifications for actions (success/error)
+  - [x] Toast notifications for actions (success/error)
   - Inline form validation
   - Better error messages with actionable steps
   - Success confirmations
@@ -69,7 +69,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - Focus indicators
 
 - [ ] **Mobile Responsiveness**
-  - Optimize all pages for mobile devices
+  - Optimize all pages for mobile devices (Basic responsiveness implemented)
   - Touch-friendly buttons and interactions
   - Mobile-optimized tables and forms
   - Responsive charts and visualizations
@@ -79,8 +79,8 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - Button variants (primary, secondary, danger, etc.)
   - Form inputs with validation
   - Modal/Dialog component
-  - Toast notification system
-  - Loading states
+  - [x] Toast notification system
+  - [x] Loading states (Skeletons implemented)
   - Empty states
   - Error states
 
@@ -91,87 +91,87 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 ### User Workflow Testing
 
 #### Workflow 1: Google Sheets Export
-- [ ] **Setup Flow**
-  - [ ] Connect Plaid account
-  - [ ] Map accounts to roles (bank, cc1, cc2)
-  - [ ] Connect Google account
-  - [ ] Set spreadsheet ID
-  - [ ] Select "Google Sheets" as export destination
-  - [ ] Verify settings saved correctly
+- [x] **Setup Flow**
+  - [x] Connect Plaid account
+  - [x] Map accounts to roles (bank, cc1, cc2)
+  - [x] Connect Google account
+  - [x] Set spreadsheet ID
+  - [x] Select "Google Sheets" as export destination
+  - [x] Verify settings saved correctly
 
-- [ ] **Sync & Export Flow**
-  - [ ] Manual sync triggers correctly
-  - [ ] Transactions sync from Plaid
-  - [ ] Rules apply correctly
-  - [ ] LLM categorization works (if enabled)
-  - [ ] Data pushes to Google Sheets
-  - [ ] Running balances update in correct cells (B2, D2, D4)
-  - [ ] Monthly sheet created/updated correctly
-  - [ ] Category totals written to correct rows
-  - [ ] SUM row not overwritten
+- [x] **Sync & Export Flow**
+  - [x] Manual sync triggers correctly
+  - [x] Transactions sync from Plaid
+  - [x] Rules apply correctly
+  - [x] LLM categorization works (if enabled)
+  - [x] Data pushes to Google Sheets
+  - [x] Running balances update in correct cells (B2, D2, D4)
+  - [x] Monthly sheet created/updated correctly
+  - [x] Category totals written to correct rows
+  - [x] SUM row not overwritten
 
-- [ ] **Auto-Sync Flow**
-  - [ ] Cron job triggers at scheduled time
-  - [ ] Auto-push to Sheets works
-  - [ ] Export destination respected
-  - [ ] Errors logged to audit log
+- [x] **Auto-Sync Flow**
+  - [x] Cron job triggers at scheduled time
+  - [x] Auto-push to Sheets works
+  - [x] Export destination respected
+  - [x] Errors logged to audit log
 
 #### Workflow 2: Native UI Only (No Google Sheets)
-- [ ] **Setup Flow**
-  - [ ] Connect Plaid account
-  - [ ] Map accounts to roles
-  - [ ] Select "Native UI" as export destination
-  - [ ] Verify no Google Sheets setup required
+- [x] **Setup Flow**
+  - [x] Connect Plaid account
+  - [x] Map accounts to roles
+  - [x] Select "Native UI" as export destination
+  - [x] Verify no Google Sheets setup required
 
-- [ ] **Usage Flow**
-  - [ ] Budget page displays correctly
-  - [ ] Running balances show accurate data
-  - [ ] Category breakdown accurate
-  - [ ] Month selector works
-  - [ ] Data updates after sync
-  - [ ] No errors when Google Sheets not configured
+- [x] **Usage Flow**
+  - [x] Budget page displays correctly
+  - [x] Running balances show accurate data
+  - [x] Category breakdown accurate
+  - [x] Month selector works
+  - [x] Data updates after sync
+  - [x] No errors when Google Sheets not configured
 
 #### Workflow 3: LLM Categorization Enabled
-- [ ] **Setup Flow**
-  - [ ] Enable LLM in settings
-  - [ ] Select provider (OpenRouter or Gemini)
-  - [ ] Set confidence threshold
-  - [ ] Verify API keys configured
+- [x] **Setup Flow**
+  - [x] Enable LLM in settings
+  - [x] Select provider (OpenRouter or Gemini)
+  - [x] Set confidence threshold
+  - [x] Verify API keys configured
 
-- [ ] **Categorization Flow**
-  - [ ] New transactions categorized by LLM
-  - [ ] High-confidence transactions auto-categorized
-  - [ ] Low-confidence transactions go to review
-  - [ ] LLM suggested rules auto-created
-  - [ ] Transfer detection works
-  - [ ] Error handling when LLM fails
+- [x] **Categorization Flow**
+  - [x] New transactions categorized by LLM
+  - [x] High-confidence transactions auto-categorized
+  - [x] Low-confidence transactions go to review
+  - [x] LLM suggested rules auto-created
+  - [x] Transfer detection works
+  - [x] Error handling when LLM fails
 
 #### Workflow 4: Rules-Only (No LLM)
-- [ ] **Setup Flow**
-  - [ ] LLM disabled in settings
-  - [ ] Create multiple rules
-  - [ ] Set rule priorities
+- [x] **Setup Flow**
+  - [x] LLM disabled in settings
+  - [x] Create multiple rules
+  - [x] Set rule priorities
 
-- [ ] **Categorization Flow**
-  - [ ] Rules match correctly
-  - [ ] Priority ordering respected
-  - [ ] Unmatched transactions go to review
-  - [ ] Rule creation from review works
+- [x] **Categorization Flow**
+  - [x] Rules match correctly
+  - [x] Priority ordering respected
+  - [x] Unmatched transactions go to review
+  - [x] Rule creation from review works
 
 #### Workflow 5: Manual Classification Only
-- [ ] **Setup Flow**
-  - [ ] LLM disabled
-  - [ ] No rules created
-  - [ ] All transactions go to review
+- [x] **Setup Flow**
+  - [x] LLM disabled
+  - [x] No rules created
+  - [x] All transactions go to review
 
-- [ ] **Review Flow**
-  - [ ] Review page shows all uncategorized transactions
-  - [ ] Individual assignment works
-  - [ ] Bulk assignment works
-  - [ ] Create rule from transaction works
-  - [ ] Mark as ignored works
-  - [ ] Mark as transfer works
-  - [ ] Category totals update after assignment
+- [x] **Review Flow**
+  - [x] Review page shows all uncategorized transactions
+  - [x] Individual assignment works
+  - [x] Bulk assignment works
+  - [x] Create rule from transaction works
+  - [x] Mark as ignored works
+  - [x] Mark as transfer works
+  - [x] Category totals update after assignment
 
 ### Edge Cases & Error Handling
 - [ ] **Plaid Connection Issues**
@@ -204,7 +204,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Transaction reconciliation
 
 ### Integration Testing
-- [ ] **End-to-End Tests**
+- [ ] **End-to-End Tests** (Infrastructure needed: Playwright/Cypress)
   - [ ] Full sync workflow
   - [ ] Complete categorization pipeline
   - [ ] Budget calculation accuracy
@@ -230,7 +230,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 - [ ] **External Authentication Providers**
   - [ ] Google OAuth integration
   - [ ] GitHub OAuth (for developers)
-  - [ ] Email/password authentication
+  - [x] Email/password authentication (Single user mode)
   - [ ] Magic link authentication
   - [ ] Social login options (Apple, Microsoft)
 
@@ -359,10 +359,10 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 
 ### Account Management
 - [ ] **Multiple Bank Accounts**
-  - [ ] Support for multiple Plaid connections
+  - [x] Support for multiple Plaid connections
   - [ ] Account grouping
   - [ ] Account-specific rules
-  - [ ] Account balance aggregation
+  - [x] Account balance aggregation
 
 - [ ] **Account Reconciliation**
   - [ ] Manual balance reconciliation
@@ -472,12 +472,12 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 - [ ] **Documentation**
   - [ ] API documentation (OpenAPI/Swagger)
   - [ ] Developer guide
-  - [ ] Architecture documentation
+  - [x] Architecture documentation
   - [ ] Contributing guidelines
 
 - [ ] **Testing Infrastructure**
   - [ ] E2E testing setup (Playwright/Cypress)
-  - [ ] Integration test suite
+  - [x] Integration test suite (Basic Vitest suite)
   - [ ] Performance testing
   - [ ] CI/CD pipeline
 
@@ -492,28 +492,28 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 ## Priority Recommendations
 
 ### Phase 1: Foundation (Weeks 1-4)
-1. Polish frontend UI (critical pages first)
-2. Comprehensive testing of all workflows
-3. Fix any bugs discovered during testing
-4. Improve error handling and user feedback
+1. [x] Polish frontend UI (critical pages first)
+2. [ ] Comprehensive testing of all workflows (E2E needed)
+3. [ ] Fix any bugs discovered during testing
+4. [x] Improve error handling and user feedback (Toasts implemented)
 
 ### Phase 2: Multi-Tenancy (Weeks 5-8)
-1. Implement user authentication system
-2. Add multi-tenancy support
-3. Migrate existing data structure
-4. Test multi-user scenarios
+1. [ ] Implement user authentication system (Full management)
+2. [ ] Add multi-tenancy support
+3. [ ] Migrate existing data structure
+4. [ ] Test multi-user scenarios
 
 ### Phase 3: Enhanced Features (Weeks 9-12)
-1. Budget planning and alerts
-2. Advanced analytics
-3. Recurring transaction detection
+1. [ ] Budget planning and alerts
+2. [ ] Advanced analytics
+3. [ ] Recurring transaction detection
 4. [x] Manual transaction import functionality (CSV & LLM)
 
 ### Phase 4: Scale & Optimize (Ongoing)
-1. Performance optimization
-2. Mobile app development
-3. API development
-4. Advanced integrations
+1. [ ] Performance optimization
+2. [ ] Mobile app development
+3. [ ] API development
+4. [ ] Advanced integrations
 
 ---
 
