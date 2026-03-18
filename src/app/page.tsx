@@ -49,7 +49,7 @@ export default function Home() {
       } else {
         error(data.error || "Sync failed");
       }
-    } catch (err) {
+    } catch {
       error("An error occurred during sync");
     } finally {
       setSyncing(false);

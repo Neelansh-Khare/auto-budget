@@ -5,18 +5,19 @@ import { pushAllToSheets } from "@/lib/sheets";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const body = await req.json();
   const { category, status, create_rule } = body;
 
-  const tx = await prisma.transaction.findUnique({ where: { id: params.id } });
+  const tx = await prisma.transaction.findUnique({ where: { id } });
   if (!tx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const updated = await prisma.transaction.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       category: category ?? tx.category,
       status: status ?? tx.status,
@@ -52,7 +53,7 @@ export async function PATCH(
   await prisma.auditLog.create({
     data: {
       eventType: "transaction_updated",
-      payload: { id: params.id, category, status, month: getMonthKey(new Date(updated.date)) },
+      payload: { id, category, status, month: getMonthKey(new Date(updated.date)) },
     },
   });
 

@@ -13,8 +13,8 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [x] Implement loading skeletons instead of "Loading..." text
 
 - [ ] **Budget Page Enhancements**
-  - Add charts and graphs (spending trends, category breakdown pie chart)
-  - Interactive budget vs actual comparison visualizations
+  - [x] Add charts and graphs (spending trends, category breakdown pie chart)
+  - [ ] Interactive budget vs actual comparison visualizations
   - Month-over-month comparison view
   - [x] Budget progress indicators with better visual feedback
   - [x] Color-coded spending alerts (green/yellow/red thresholds)

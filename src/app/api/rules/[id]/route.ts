@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   const body = await req.json();
   const rule = await prisma.rule.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: body.name,
       pattern: body.pattern,
@@ -22,9 +23,10 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  await prisma.rule.delete({ where: { id: params.id } });
+  const { id } = await params;
+  await prisma.rule.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
 

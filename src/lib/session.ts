@@ -20,8 +20,7 @@ export const sessionOptions: SessionOptions = {
 };
 
 export async function getSession() {
-  const cookieStore = cookies();
-  // @ts-expect-error iron-session supports next cookies adapter via getIronSession overload
+  const cookieStore = await cookies();
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
 

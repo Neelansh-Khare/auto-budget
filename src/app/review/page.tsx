@@ -51,7 +51,7 @@ export default function ReviewPage() {
       } else {
         error("Failed to categorize transaction");
       }
-    } catch (err) {
+    } catch {
       error("An error occurred");
     }
   }
@@ -69,7 +69,7 @@ export default function ReviewPage() {
       } else {
         error("Failed to mark as transfer");
       }
-    } catch (err) {
+    } catch {
       error("An error occurred");
     }
   }
@@ -87,7 +87,7 @@ export default function ReviewPage() {
       } else {
         error("Failed to ignore transaction");
       }
-    } catch (err) {
+    } catch {
       error("An error occurred");
     }
   }
@@ -108,7 +108,7 @@ export default function ReviewPage() {
       success(`Bulk categorized ${selected.size} items`);
       setSelected(new Set());
       load();
-    } catch (err) {
+    } catch {
       error("An error occurred during bulk action");
     }
   }

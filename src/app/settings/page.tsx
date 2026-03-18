@@ -16,12 +16,12 @@ export default function SettingsPage() {
   const [googleUrl, setGoogleUrl] = useState("");
   const { success, error } = useToast();
 
-  async function load() {
+  const load = useCallback(async () => {
     const data = await fetch("/api/settings").then((r) => r.json());
     setSettings(data.settings || {});
     setSheet(data.sheet || {});
     setAccounts(data.accounts || []);
-  }
+  }, []);
 
   useEffect(() => {
     load();
@@ -33,7 +33,7 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d) => setLinkToken(d.link_token))
       .catch((err) => console.error("Failed to get link token:", err));
-  }, []);
+  }, [load]);
 
   async function save() {
     try {
@@ -51,27 +51,35 @@ export default function SettingsPage() {
       } else {
         error("Failed to save settings");
       }
-    } catch (err) {
+    } catch {
       error("An error occurred while saving settings");
     }
   }
 
-  const onSuccess = useCallback(async (publicToken: string, metadata: { institution?: { name?: string } }) => {
-    const resp = await fetch("/api/plaid/exchange", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        public_token: publicToken,
-        institution: metadata.institution?.name || "Unknown"
-      }),
-    });
-    if (resp.ok) {
-      success("Plaid connected successfully");
-      await load(); // Reload to show new accounts
-    } else {
-      error("Plaid connection failed");
-    }
-  }, [success, load]);
+  const onSuccess = useCallback(
+    async (publicToken: string, metadata: unknown) => {
+      try {
+        const meta = metadata as { institution?: { name?: string } };
+        const resp = await fetch("/api/plaid/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            public_token: publicToken,
+            institution: meta.institution?.name || "Unknown",
+          }),
+        });
+        if (resp.ok) {
+          success("Plaid connected successfully");
+          await load(); // Reload to show new accounts
+        } else {
+          error("Plaid connection failed");
+        }
+      } catch {
+        error("An error occurred during Plaid exchange");
+      }
+    },
+    [success, error, load],
+  );
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
@@ -88,14 +96,14 @@ export default function SettingsPage() {
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={settings?.llmEnabled || false}
+              checked={(settings?.llmEnabled as boolean) || false}
               onChange={(e) => setSettings({ ...settings, llmEnabled: e.target.checked })}
             />
             Enable LLM
           </label>
           <div className="grid sm:grid-cols-2 gap-2">
             <select
-              value={settings?.llmProvider || ""}
+              value={(settings?.llmProvider as string) || ""}
               onChange={(e) => setSettings({ ...settings, llmProvider: e.target.value })}
               className="border rounded px-2 py-1"
             >
@@ -104,7 +112,7 @@ export default function SettingsPage() {
               <option value="gemini">Gemini</option>
             </select>
             <input
-              value={settings?.llmModel || ""}
+              value={(settings?.llmModel as string) || ""}
               onChange={(e) => setSettings({ ...settings, llmModel: e.target.value })}
               placeholder="Model"
               className="border rounded px-2 py-1"
@@ -112,8 +120,10 @@ export default function SettingsPage() {
             <input
               type="number"
               step="0.01"
-              value={settings?.confidenceThreshold || 0.8}
-              onChange={(e) => setSettings({ ...settings, confidenceThreshold: Number(e.target.value) })}
+              value={(settings?.confidenceThreshold as number) || 0.8}
+              onChange={(e) =>
+                setSettings({ ...settings, confidenceThreshold: Number(e.target.value) })
+              }
               placeholder="Confidence threshold"
               className="border rounded px-2 py-1"
             />
@@ -122,9 +132,7 @@ export default function SettingsPage() {
 
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
           <h2 className="font-semibold">Export Destination</h2>
-          <p className="text-sm text-gray-600">
-            Choose where to view your budget data
-          </p>
+          <p className="text-sm text-gray-600">Choose where to view your budget data</p>
           <div className="space-y-2">
             <label className="flex items-center gap-2">
               <input
@@ -151,7 +159,7 @@ export default function SettingsPage() {
             <div className="mt-4 pt-4 border-t space-y-3">
               <h3 className="font-medium text-sm">Google Sheets Configuration</h3>
               <input
-                value={sheet?.spreadsheetId || ""}
+                value={(sheet?.spreadsheetId as string) || ""}
                 onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
                 placeholder="Spreadsheet ID"
                 className="border rounded px-2 py-1 w-full"
@@ -178,9 +186,7 @@ export default function SettingsPage() {
 
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
           <h2 className="font-semibold">Plaid</h2>
-          <p className="text-sm text-gray-600">
-            Connect your bank accounts via Plaid Link
-          </p>
+          <p className="text-sm text-gray-600">Connect your bank accounts via Plaid Link</p>
           {linkToken ? (
             <button
               onClick={() => open()}
@@ -229,20 +235,20 @@ export default function SettingsPage() {
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={settings?.autoSyncEnabled || false}
+              checked={(settings?.autoSyncEnabled as boolean) || false}
               onChange={(e) => setSettings({ ...settings, autoSyncEnabled: e.target.checked })}
             />
             Auto-sync daily
           </label>
           <input
-            value={settings?.autoSyncCron || "0 9 * * *"}
+            value={(settings?.autoSyncCron as string) || "0 9 * * *"}
             onChange={(e) => setSettings({ ...settings, autoSyncCron: e.target.value })}
             className="border rounded px-2 py-1"
           />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={settings?.autoPushToSheets || false}
+              checked={(settings?.autoPushToSheets as boolean) || false}
               onChange={(e) => setSettings({ ...settings, autoPushToSheets: e.target.checked })}
             />
             Auto-push to Sheets after sync
@@ -256,4 +262,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
