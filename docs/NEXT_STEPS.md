@@ -31,7 +31,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - Advanced filtering (date range, amount range, category, status)
   - Bulk actions UI improvements
   - Transaction detail modal/view
-  - Export transactions to CSV
+  - [x] Export transactions to CSV
 
 - [ ] **Review Page Improvements**
   - Better queue management
@@ -42,8 +42,9 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 
 - [ ] **Settings Page Redesign**
   - Tabbed interface for better organization
-  - Connection status indicators
-  - Test connection buttons
+  - [x] Connection status indicators
+  - [ ] Test connection buttons
+
   - Clearer configuration sections
   - Help tooltips and inline documentation
 

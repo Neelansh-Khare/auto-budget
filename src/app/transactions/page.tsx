@@ -47,6 +47,32 @@ export default function TransactionsPage() {
     load();
   }
 
+  function handleExportCsv() {
+    if (transactions.length === 0) return;
+
+    const headers = ["Date", "Merchant", "Description", "Amount", "Category", "Status", "Confidence"];
+    const rows = transactions.map((t) => [
+      new Date(t.date).toLocaleDateString(),
+      t.merchant || "",
+      `"${t.description.replace(/"/g, '""')}"`,
+      t.amountSpendNormalized.toFixed(2),
+      t.category || "",
+      t.status,
+      t.confidence ? (t.confidence * 100).toFixed(0) + "%" : "",
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `transactions_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
@@ -77,6 +103,13 @@ export default function TransactionsPage() {
             disabled={loading}
           >
             Apply
+          </button>
+          <button
+            onClick={handleExportCsv}
+            disabled={loading || transactions.length === 0}
+            className="px-3 py-1 bg-green-600 text-white rounded disabled:opacity-50 ml-auto"
+          >
+            Export CSV
           </button>
         </div>
         <div className="overflow-auto bg-white border rounded shadow-sm">

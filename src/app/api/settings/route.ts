@@ -5,7 +5,13 @@ export async function GET() {
   const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
   const sheet = await prisma.sheetConfig.findFirst();
   const accounts = await prisma.account.findMany();
-  return NextResponse.json({ settings, sheet, accounts });
+  return NextResponse.json({
+    settings,
+    sheet,
+    accounts,
+    isPlaidConnected: !!settings?.plaidAccessTokenEnc,
+    isGoogleConnected: !!sheet?.googleRefreshToken,
+  });
 }
 
 export async function POST(req: Request) {

@@ -14,6 +14,8 @@ export default function SettingsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [googleUrl, setGoogleUrl] = useState("");
+  const [isPlaidConnected, setIsPlaidConnected] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const { success, error } = useToast();
 
   const load = useCallback(async () => {
@@ -21,6 +23,8 @@ export default function SettingsPage() {
     setSettings(data.settings || {});
     setSheet(data.sheet || {});
     setAccounts(data.accounts || []);
+    setIsPlaidConnected(data.isPlaidConnected);
+    setIsGoogleConnected(data.isGoogleConnected);
   }, []);
 
   useEffect(() => {
@@ -157,7 +161,12 @@ export default function SettingsPage() {
           </div>
           {settings?.exportDestination === "google_sheets" && (
             <div className="mt-4 pt-4 border-t space-y-3">
-              <h3 className="font-medium text-sm">Google Sheets Configuration</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-sm">Google Sheets Configuration</h3>
+                <span className={`text-xs px-2 py-0.5 rounded ${isGoogleConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {isGoogleConnected ? "Connected" : "Not Connected"}
+                </span>
+              </div>
               <input
                 value={(sheet?.spreadsheetId as string) || ""}
                 onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
@@ -166,7 +175,7 @@ export default function SettingsPage() {
               />
               {googleUrl && (
                 <a href={googleUrl} className="text-blue-600 text-sm underline">
-                  Connect Google
+                  {isGoogleConnected ? "Reconnect Google" : "Connect Google"}
                 </a>
               )}
             </div>
@@ -185,7 +194,12 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
-          <h2 className="font-semibold">Plaid</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Plaid</h2>
+            <span className={`text-xs px-2 py-0.5 rounded ${isPlaidConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+              {isPlaidConnected ? "Connected" : "Not Connected"}
+            </span>
+          </div>
           <p className="text-sm text-gray-600">Connect your bank accounts via Plaid Link</p>
           {linkToken ? (
             <button
