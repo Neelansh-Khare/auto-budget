@@ -16,7 +16,10 @@ export default function SettingsPage() {
   const [googleUrl, setGoogleUrl] = useState("");
   const [isPlaidConnected, setIsPlaidConnected] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const { success, error } = useToast();
+  const [isTestingLLM, setIsTestingLLM] = useState(false);
+  const [isTestingSheets, setIsTestingSheets] = useState(false);
+  const [isTestingPlaid, setIsTestingPlaid] = useState(false);
+  const { success, error, info } = useToast();
 
   const load = useCallback(async () => {
     const data = await fetch("/api/settings").then((r) => r.json());
@@ -90,13 +93,84 @@ export default function SettingsPage() {
     onSuccess,
   });
 
+  async function testLLM() {
+    setIsTestingLLM(true);
+    info("Testing LLM connection...");
+    try {
+      const resp = await fetch("/api/llm/test", { method: "POST" });
+      const data = await resp.json();
+      if (resp.ok) {
+        success(`LLM test successful! Categorized as: ${data.result.category}`);
+      } else {
+        error(data.error || "LLM test failed");
+      }
+    } catch {
+      error("An error occurred during LLM test");
+    } finally {
+      setIsTestingLLM(false);
+    }
+  }
+
+  async function testSheets() {
+    setIsTestingSheets(true);
+    info("Testing Google Sheets connection...");
+    try {
+      const resp = await fetch("/api/sheets/test", { method: "POST" });
+      const data = await resp.json();
+      if (resp.ok) {
+        success(`Google Sheets test successful! Connected to "${data.title}"`);
+      } else {
+        error(data.error || "Google Sheets test failed");
+      }
+    } catch {
+      error("An error occurred during Google Sheets test");
+    } finally {
+      setIsTestingSheets(false);
+    }
+  }
+
+  async function testPlaid() {
+    setIsTestingPlaid(true);
+    info("Testing Plaid connection...");
+    try {
+      const resp = await fetch("/api/plaid/test", { method: "POST" });
+      const data = await resp.json();
+      if (resp.ok) {
+        success(`Plaid test successful! Found ${data.accounts.length} accounts.`);
+      } else {
+        error(data.error || "Plaid test failed");
+      }
+    } catch {
+      error("An error occurred during Plaid test");
+    } finally {
+      setIsTestingPlaid(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
-      <div className="max-w-4xl mx-auto p-6 space-y-4">
-        <h1 className="text-2xl font-semibold">Settings</h1>
+      <div className="max-w-4xl mx-auto p-6 space-y-4 pb-20">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Settings</h1>
+          <button onClick={save} className="px-6 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 shadow-sm transition-colors">
+            Save all changes
+          </button>
+        </div>
+
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
-          <h2 className="font-semibold">LLM</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">LLM</h2>
+            {settings?.llmEnabled && (
+              <button
+                onClick={testLLM}
+                disabled={isTestingLLM}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border transition-colors disabled:opacity-50"
+              >
+                {isTestingLLM ? "Testing..." : "Test Connection"}
+              </button>
+            )}
+          </div>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -173,11 +247,20 @@ export default function SettingsPage() {
                 placeholder="Spreadsheet ID"
                 className="border rounded px-2 py-1 w-full"
               />
-              {googleUrl && (
-                <a href={googleUrl} className="text-blue-600 text-sm underline">
-                  {isGoogleConnected ? "Reconnect Google" : "Connect Google"}
-                </a>
-              )}
+              <div className="flex items-center gap-3">
+                {googleUrl && (
+                  <a href={googleUrl} className="text-blue-600 text-sm hover:underline font-medium">
+                    {isGoogleConnected ? "Reconnect Google" : "Connect Google"}
+                  </a>
+                )}
+                <button
+                  onClick={testSheets}
+                  disabled={isTestingSheets || !isGoogleConnected}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border transition-colors disabled:opacity-50"
+                >
+                  {isTestingSheets ? "Testing..." : "Test Connection"}
+                </button>
+              </div>
             </div>
           )}
           {settings?.exportDestination === "native" && (
@@ -196,9 +279,18 @@ export default function SettingsPage() {
         <div className="bg-white border rounded p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Plaid</h2>
-            <span className={`text-xs px-2 py-0.5 rounded ${isPlaidConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-              {isPlaidConnected ? "Connected" : "Not Connected"}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={testPlaid}
+                disabled={isTestingPlaid || !isPlaidConnected}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border transition-colors disabled:opacity-50"
+              >
+                {isTestingPlaid ? "Testing..." : "Test Connection"}
+              </button>
+              <span className={`text-xs px-2 py-0.5 rounded ${isPlaidConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                {isPlaidConnected ? "Connected" : "Not Connected"}
+              </span>
+            </div>
           </div>
           <p className="text-sm text-gray-600">Connect your bank accounts via Plaid Link</p>
           {linkToken ? (
@@ -268,10 +360,6 @@ export default function SettingsPage() {
             Auto-push to Sheets after sync
           </label>
         </div>
-
-        <button onClick={save} className="px-4 py-2 bg-green-600 text-white rounded">
-          Save all
-        </button>
       </div>
     </div>
   );

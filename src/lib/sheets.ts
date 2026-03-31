@@ -174,6 +174,21 @@ export async function updateMonthlySheet(date: Date) {
   }
 }
 
+export async function testSheetsConnection() {
+  const cfg = await prisma.sheetConfig.findFirst();
+  if (!cfg || !cfg.spreadsheetId) {
+    throw new Error("Spreadsheet ID not configured");
+  }
+  const sheets = await getSheetsClient();
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId: cfg.spreadsheetId,
+  });
+  return {
+    title: meta.data.properties?.title || "Unknown Spreadsheet",
+    sheets: meta.data.sheets?.map((s) => s.properties?.title) || [],
+  };
+}
+
 export async function pushAllToSheets({
   bank,
   cc1,

@@ -67,6 +67,15 @@ export async function syncFromPlaid({
   };
 }
 
+export async function testPlaidConnection(accessToken: string) {
+  const plaid = getPlaidClient();
+  const resp = await plaid.accountsBalanceGet({ access_token: accessToken });
+  return {
+    accounts: resp.data.accounts.map((a) => ({ name: a.name, type: a.type })),
+    item_id: resp.data.item.item_id,
+  };
+}
+
 export async function storeAccessToken(userId: string, token: string, institutionName: string) {
   const encrypted = encrypt(token);
   await prisma.settings.upsert({
