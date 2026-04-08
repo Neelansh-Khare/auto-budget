@@ -41,9 +41,9 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - Suggested categories based on history
 
 - [ ] **Settings Page Redesign**
-  - Tabbed interface for better organization
+  - [x] Tabbed interface for better organization
   - [x] Connection status indicators
-  - [ ] Test connection buttons
+  - [x] Test connection buttons
   - Clearer configuration sections
   - Help tooltips and inline documentation
 
