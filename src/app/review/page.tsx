@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
 import { Skeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/ToastContext";
+import { Card, CardContent } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import { Badge } from "@/components/Badge";
+import { 
+  CheckCircle2, 
+  XCircle, 
+  ArrowRightLeft, 
+  Search,
+  CheckSquare,
+  Square,
+  Clock
+} from "lucide-react";
 
 type Tx = {
   id: string;
@@ -22,9 +35,10 @@ export default function ReviewPage() {
   const [bulkCategory, setBulkCategory] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [createRuleMap, setCreateRuleMap] = useState<Map<string, boolean>>(new Map());
-  const { success, error } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { success, error, info } = useToast();
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetch("/api/transactions?status=needs_review").then((r) => r.json());
@@ -32,13 +46,14 @@ export default function ReviewPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   async function update(id: string, category: string, status = "categorized", createRule = false) {
+    if (!category) return;
     try {
       const resp = await fetch(`/api/transactions/${id}`, {
         method: "PATCH",
@@ -47,7 +62,7 @@ export default function ReviewPage() {
       });
       if (resp.ok) {
         success("Transaction categorized");
-        load();
+        setItems(prev => prev.filter(item => item.id !== id));
       } else {
         error("Failed to categorize transaction");
       }
@@ -65,7 +80,7 @@ export default function ReviewPage() {
       });
       if (resp.ok) {
         success("Marked as transfer");
-        load();
+        setItems(prev => prev.filter(item => item.id !== id));
       } else {
         error("Failed to mark as transfer");
       }
@@ -83,7 +98,7 @@ export default function ReviewPage() {
       });
       if (resp.ok) {
         success("Transaction ignored");
-        load();
+        setItems(prev => prev.filter(item => item.id !== id));
       } else {
         error("Failed to ignore transaction");
       }
@@ -93,9 +108,15 @@ export default function ReviewPage() {
   }
 
   async function applyBulk() {
+    if (!bulkCategory) {
+      error("Please specify a category for bulk action");
+      return;
+    }
+    info(`Applying bulk category to ${selected.size} items...`);
     try {
+      let count = 0;
       for (const id of selected) {
-        await fetch(`/api/transactions/${id}`, {
+        const resp = await fetch(`/api/transactions/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -104,127 +125,257 @@ export default function ReviewPage() {
             create_rule: createRuleMap.get(id) || false 
           }),
         });
+        if (resp.ok) count++;
       }
-      success(`Bulk categorized ${selected.size} items`);
+      success(`Bulk categorized ${count} items`);
       setSelected(new Set());
+      setBulkCategory("");
       load();
     } catch {
       error("An error occurred during bulk action");
     }
   }
 
+  const toggleSelect = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
+
+  const selectAll = () => {
+    if (selected.size === filteredItems.length) setSelected(new Set());
+    else setSelected(new Set(filteredItems.map(i => i.id)));
+  };
+
+  const filteredItems = items.filter(item => 
+    (item.merchant || item.description).toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getConfidenceColor = (score: number | null) => {
+    if (score === null) return "bg-muted text-muted-foreground";
+    if (score >= 0.8) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+    if (score >= 0.5) return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+    return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Nav />
-      <div className="max-w-5xl mx-auto p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Needs Review</h1>
-          <div className="flex gap-2 items-center">
-            <input
-              value={bulkCategory}
-              onChange={(e) => setBulkCategory(e.target.value)}
-              placeholder="Bulk category"
-              className="border rounded px-2 py-1"
-              disabled={loading}
-            />
-            <button 
-              onClick={applyBulk} 
-              className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
-              disabled={loading || selected.size === 0}
-            >
-              Apply to selected
-            </button>
+      <main className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Review Queue</h1>
+            <p className="text-muted-foreground mt-1">
+              Categorize pending transactions to keep your budget accurate.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="px-3 py-1">
+              {items.length} Pending
+            </Badge>
           </div>
         </div>
-        <div className="space-y-3">
+
+        {/* Bulk Actions & Search */}
+        <Card className="bg-muted/30 border-dashed">
+          <CardContent className="p-4 md:p-6 flex flex-col md:flex-row gap-4 items-end md:items-center">
+            <div className="flex-1 w-full space-y-1.5">
+              <label className="text-sm font-medium">Search</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Filter transactions..." 
+                  className="pl-8" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex-1 w-full space-y-1.5">
+              <label className="text-sm font-medium">Bulk Category</label>
+              <Input 
+                placeholder="Assign category to selected..." 
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button 
+                variant="primary" 
+                onClick={applyBulk}
+                disabled={selected.size === 0 || !bulkCategory}
+                className="flex-1 md:flex-none"
+              >
+                Apply to {selected.size || "selected"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* List Header */}
+        <div className="flex items-center justify-between px-2">
+           <button 
+            onClick={selectAll}
+            className="text-sm font-medium text-muted-foreground flex items-center gap-2 hover:text-primary transition-colors"
+          >
+            {selected.size === filteredItems.length && filteredItems.length > 0 ? (
+              <CheckSquare className="h-4 w-4 text-primary" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+            Select All {filteredItems.length !== items.length ? `(${filteredItems.length} filtered)` : ''}
+          </button>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="hidden md:block">Confidence</span>
+            <span className="hidden md:block text-right w-20">Amount</span>
+          </div>
+        </div>
+
+        {/* Transaction List */}
+        <div className="space-y-4">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="bg-white border rounded shadow-sm p-4 flex gap-4 items-center">
-                <Skeleton className="w-5 h-5 rounded" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex justify-between">
-                    <Skeleton className="w-48 h-5" />
-                    <Skeleton className="w-20 h-5" />
+              <Card key={i}>
+                <CardContent className="p-4 flex gap-4 items-center">
+                  <Skeleton className="h-5 w-5" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-1/3" />
+                    <Skeleton className="h-4 w-1/4" />
                   </div>
-                  <div className="flex gap-2">
-                    <Skeleton className="w-32 h-8" />
-                    <Skeleton className="w-24 h-8" />
-                    <Skeleton className="w-24 h-8" />
-                  </div>
-                </div>
-              </div>
+                  <Skeleton className="h-8 w-24" />
+                </CardContent>
+              </Card>
             ))
           ) : (
             <>
-              {items.map((t) => (
-                <div key={t.id} className="bg-white border rounded shadow-sm p-3 flex gap-3 items-center">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(t.id)}
-                    onChange={(e) => {
-                      const next = new Set(selected);
-                      if (e.target.checked) next.add(t.id);
-                      else next.delete(t.id);
-                      setSelected(next);
-                    }}
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-semibold">{t.merchant || t.description}</p>
-                        <p className="text-xs text-gray-500">{new Date(t.date).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">${t.amountSpendNormalized.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">
-                          Confidence {t.confidence ? (t.confidence * 100).toFixed(0) + "%" : "n/a"}
-                        </p>
+              {filteredItems.map((t) => (
+                <Card key={t.id} className={`transition-all ${selected.has(t.id) ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+                  <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <button 
+                        onClick={() => toggleSelect(t.id)}
+                        className="mt-1 transition-colors hover:text-primary"
+                      >
+                        {selected.has(t.id) ? (
+                          <CheckSquare className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Square className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-1">
+                          <p className="font-bold truncate text-lg">
+                            {t.merchant || t.description}
+                          </p>
+                          <div className="flex items-center gap-3">
+                            {t.confidence !== null && (
+                              <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getConfidenceColor(t.confidence)}`}>
+                                {(t.confidence * 100).toFixed(0)}% Match
+                              </div>
+                            )}
+                            <p className="font-bold text-lg md:text-xl text-right">
+                              ${t.amountSpendNormalized.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <Clock className="h-3 w-3" />
+                          {new Date(t.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                          {t.merchant && t.description && (
+                            <>
+                              <span className="mx-1">•</span>
+                              <span className="truncate max-w-[200px]">{t.description}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Actions Row */}
+                        <div className="mt-4 flex flex-wrap gap-2 items-center">
+                          <div className="flex-1 min-w-[200px] max-w-sm relative">
+                            <Input 
+                              placeholder="Type category..." 
+                              defaultValue={t.category || ""}
+                              className="h-8 text-sm pr-12"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  update(t.id, (e.target as HTMLInputElement).value, "categorized", createRuleMap.get(t.id) || false);
+                                }
+                              }}
+                            />
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="absolute right-0 top-0 h-8 px-2 text-primary"
+                              onClick={(e) => {
+                                const input = e.currentTarget.previousSibling as HTMLInputElement;
+                                update(t.id, input.value, "categorized", createRuleMap.get(t.id) || false);
+                              }}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              className="rounded border-input text-primary focus:ring-primary"
+                              checked={createRuleMap.get(t.id) || false}
+                              onChange={(e) => {
+                                const next = new Map(createRuleMap);
+                                next.set(t.id, e.target.checked);
+                                setCreateRuleMap(next);
+                              }}
+                            />
+                            <span className="text-xs font-medium">Auto-rule</span>
+                          </label>
+
+                          <div className="flex gap-1 ml-auto">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Mark as Transfer"
+                              onClick={() => markTransfer(t.id)}
+                            >
+                              <ArrowRightLeft className="h-4 w-4" />
+                              <span className="hidden lg:inline ml-2">Transfer</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Ignore Transaction"
+                              onClick={() => markIgnored(t.id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span className="hidden lg:inline ml-2">Ignore</span>
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      <input
-                        key={t.id}
-                        defaultValue={t.category || ""}
-                        placeholder="Category"
-                        className="border rounded px-2 py-1"
-                        onBlur={(e) => {
-                          const createRule = createRuleMap.get(t.id) || false;
-                          update(t.id, e.target.value, "categorized", createRule);
-                        }}
-                      />
-                      <label className="flex items-center gap-1 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={createRuleMap.get(t.id) || false}
-                          onChange={(e) => {
-                            const next = new Map(createRuleMap);
-                            next.set(t.id, e.target.checked);
-                            setCreateRuleMap(next);
-                          }}
-                        />
-                        <span className="text-xs">Create rule</span>
-                      </label>
-                      <button
-                        onClick={() => markTransfer(t.id)}
-                        className="px-2 py-1 border rounded hover:bg-gray-100 text-sm"
-                      >
-                        Mark transfer
-                      </button>
-                      <button
-                        onClick={() => markIgnored(t.id)}
-                        className="px-2 py-1 border rounded hover:bg-gray-100 text-sm"
-                      >
-                        Ignore
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
-              {items.length === 0 && <p className="text-sm text-gray-600">No items needing review.</p>}
+              
+              {filteredItems.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                  <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">All caught up!</h3>
+                    <p className="text-muted-foreground">No transactions need review at this time.</p>
+                  </div>
+                  <Button variant="outline" onClick={() => load()}>
+                    Refresh Queue
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

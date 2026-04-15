@@ -3,8 +3,21 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Nav } from "@/components/Nav";
 import { Skeleton } from "@/components/Skeleton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { Skeleton } from "@/components/Skeleton";
 import { DateTime } from "luxon";
 import dynamic from "next/dynamic";
+import { 
+  CreditCard, 
+  Banknote, 
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  PieChart as PieChartIcon,
+  BarChart3 as BarChartIcon,
+  Table as TableIcon
+} from "lucide-react";
 
 // Dynamic imports for recharts components to avoid SSR/prerendering issues in Next.js 15 / React 19
 const PieChart = dynamic(() => import("recharts").then((mod) => mod.PieChart), { ssr: false });
@@ -38,16 +51,16 @@ type BudgetData = {
 };
 
 const COLORS = [
-  "#3b82f6", // Blue-500
-  "#10b981", // Emerald-500
-  "#f59e0b", // Amber-500
-  "#ef4444", // Red-500
-  "#8b5cf6", // Violet-500
-  "#ec4899", // Pink-500
-  "#06b6d4", // Cyan-500
-  "#f97316", // Orange-500
-  "#14b8a6", // Teal-500
-  "#6366f1", // Indigo-500
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
 ];
 
 export default function BudgetPage() {
@@ -93,111 +106,109 @@ export default function BudgetPage() {
     }));
   }, [data]);
 
-  function formatCurrency(amount: number) {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 2,
     }).format(amount);
-  }
+  };
 
-  function getPercentageUsed(spent: number, budget: number) {
+  const getPercentageUsed = (spent: number, budget: number) => {
     if (budget === 0) return 0;
     return Math.min(100, (spent / budget) * 100);
-  }
+  };
 
-  function getMonthOptions() {
-    const months = [];
-    const now = DateTime.now();
-    for (let i = -6; i <= 6; i++) {
-      const month = now.plus({ months: i });
-      months.push(month.toJSDate());
-    }
-    return months;
-  }
+  const changeMonth = (offset: number) => {
+    setSelectedMonth(prev => DateTime.fromJSDate(prev).plus({ months: offset }).toJSDate());
+  };
 
   const totalBudget = data?.categories.reduce((sum, c) => sum + c.budget, 0) ?? 0;
   const totalSpent = data?.categories.reduce((sum, c) => sum + c.spent, 0) ?? 0;
   const totalRemaining = totalBudget - totalSpent;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-background">
       <Nav />
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Budget Overview</h1>
-            <div className="h-5 mt-1">
-              {loading ? (
-                <Skeleton className="w-32 h-4" />
-              ) : (
-                <p className="text-sm text-gray-600">{data?.month.label}</p>
-              )}
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Budget Overview</h1>
+            <p className="text-muted-foreground mt-1 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              {data?.month.label || DateTime.fromJSDate(selectedMonth).toFormat("LLLL yyyy")}
+            </p>
           </div>
-          <div>
-            <select
-              value={DateTime.fromJSDate(selectedMonth).toFormat("yyyy-MM")}
-              onChange={(e) => setSelectedMonth(new Date(e.target.value + "-01"))}
-              className="border rounded px-3 py-2 bg-white"
-            >
-              {getMonthOptions().map((month) => {
-                const dt = DateTime.fromJSDate(month);
-                return (
-                  <option key={dt.toFormat("yyyy-MM")} value={dt.toFormat("yyyy-MM")}>
-                    {dt.toFormat("LLLL yyyy")}
-                  </option>
-                );
-              })}
-            </select>
+          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+            <Button variant="ghost" size="sm" onClick={() => changeMonth(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium px-2 min-w-[120px] text-center">
+              {DateTime.fromJSDate(selectedMonth).toFormat("MMM yyyy")}
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => changeMonth(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
         {/* Running Balances */}
-        <div className="bg-white border rounded-lg p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4">Running Balances</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4 bg-gray-50/50">
-              <div className="text-sm text-gray-600 mb-1">Bank Account</div>
-              <div className="text-2xl font-bold">
-                {loading ? (
-                  <Skeleton className="w-24 h-8" />
-                ) : (
-                  formatCurrency(data?.balances.bank ?? 0)
-                )}
-              </div>
-            </div>
-            <div className="border rounded-lg p-4 bg-gray-50/50">
-              <div className="text-sm text-gray-600 mb-1">Credit Card 1</div>
-              <div className="text-2xl font-bold">
-                {loading ? (
-                  <Skeleton className="w-24 h-8" />
-                ) : (
-                  formatCurrency(data?.balances.cc1 ?? 0)
-                )}
-              </div>
-            </div>
-            <div className="border rounded-lg p-4 bg-gray-50/50">
-              <div className="text-sm text-gray-600 mb-1">Credit Card 2</div>
-              <div className="text-2xl font-bold">
-                {loading ? (
-                  <Skeleton className="w-24 h-8" />
-                ) : (
-                  formatCurrency(data?.balances.cc2 ?? 0)
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bank Balance</CardTitle>
+              <Banknote className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-bold">{formatCurrency(data?.balances.bank ?? 0)}</div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">CC 1 Balance</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-bold">{formatCurrency(data?.balances.cc1 ?? 0)}</div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">CC 2 Balance</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <div className="text-2xl font-bold">{formatCurrency(data?.balances.cc2 ?? 0)}</div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Visual Summary */}
+        {/* Visual Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-6">Spending by Category</h2>
-            <div className="h-[300px] w-full">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <PieChartIcon className="h-5 w-5 text-primary" />
+                <CardTitle>Spending Distribution</CardTitle>
+              </div>
+              <CardDescription>How your money is distributed across categories.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[300px]">
               {loading ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="w-48 h-48 rounded-full border-8 border-gray-100 border-t-blue-500 animate-spin" />
+                <div className="flex items-center justify-center h-full">
+                  <Skeleton className="h-48 w-48 rounded-full" />
                 </div>
               ) : pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -216,244 +227,203 @@ export default function BudgetPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: unknown) => formatCurrency(Number(value))}
+                      formatter={(value: number) => formatCurrency(value)}
                       contentStyle={{
-                        borderRadius: "8px",
-                        border: "none",
-                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                        color: "hsl(var(--popover-foreground))",
                       }}
                     />
-                    <Legend verticalAlign="bottom" height={36} />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
-                  No spending data for this month
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No spending data for this month.
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-6">Budget vs. Actual</h2>
-            <div className="h-[300px] w-full">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChartIcon className="h-5 w-5 text-primary" />
+                <CardTitle>Budget vs. Actual</CardTitle>
+              </div>
+              <CardDescription>Compare your set budget with actual spending.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[300px]">
               {loading ? (
-                <div className="w-full h-full space-y-4">
-                  <Skeleton className="w-full h-full" />
+                <div className="space-y-4 h-full flex flex-col justify-end">
+                   {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className={`w-full h-${i*4}`} />
+                  ))}
                 </div>
               ) : barData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData} layout="vertical" margin={{ left: 40, right: 20 }}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      horizontal={true}
-                      vertical={false}
-                      stroke="#f3f4f6"
-                    />
+                  <BarChart data={barData} layout="vertical" margin={{ left: 20, right: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
                     <XAxis type="number" hide />
                     <YAxis
                       dataKey="name"
                       type="category"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 12, fill: "#4b5563" }}
                       width={100}
+                      style={{ fontSize: '12px', fill: 'hsl(var(--muted-foreground))' }}
                     />
                     <Tooltip
-                      formatter={(value: unknown) => formatCurrency(Number(value))}
-                      cursor={{ fill: "#f9fafb" }}
+                      formatter={(value: number) => formatCurrency(value)}
+                      cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
                       contentStyle={{
-                        borderRadius: "8px",
-                        border: "none",
-                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                        color: "hsl(var(--popover-foreground))",
                       }}
                     />
-                    <Bar dataKey="spent" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Spent" />
-                    <Bar dataKey="budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} name="Budget" />
+                    <Bar dataKey="spent" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Spent" />
+                    <Bar dataKey="budget" fill="hsl(var(--muted))" radius={[0, 4, 4, 0]} name="Budget" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
-                  No budget data for this month
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No budget data for this month.
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Category Breakdown Table */}
-        <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Monthly Category Breakdown</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Budget
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Spent
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    Remaining
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-48">
-                    Progress
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      <td className="px-6 py-4">
-                        <Skeleton className="w-24 h-4" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="w-16 h-4 ml-auto" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="w-16 h-4 ml-auto" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="w-16 h-4 ml-auto" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton className="w-full h-2" />
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  data?.categories.map((item) => {
-                    const percentage = getPercentageUsed(item.spent, item.budget);
-                    return (
-                      <tr key={item.category} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{item.category}</div>
+        {/* Detailed Table */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <TableIcon className="h-5 w-5 text-primary" />
+                <CardTitle>Category Breakdown</CardTitle>
+              </div>
+              <CardDescription>A detailed look at your spending per category.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="relative w-full overflow-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead className="[&_tr]:border-b bg-muted/50">
+                  <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                    <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
+                    <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Budget</th>
+                    <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Spent</th>
+                    <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Remaining</th>
+                    <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground w-[150px]">Progress</th>
+                  </tr>
+                </thead>
+                <tbody className="[&_tr:last-child]:border-0">
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b transition-colors hover:bg-muted/50">
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                        <td className="p-4 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                        <td className="p-4 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                        <td className="p-4"><Skeleton className="h-2 w-full" /></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      {data?.categories.map((item) => {
+                        const percentage = getPercentageUsed(item.spent, item.budget);
+                        const isOver = item.spent > item.budget;
+                        return (
+                          <tr key={item.category} className="border-b transition-colors hover:bg-muted/50">
+                            <td className="p-4 align-middle font-medium">{item.category}</td>
+                            <td className="p-4 align-middle text-right">{formatCurrency(item.budget)}</td>
+                            <td className="p-4 align-middle text-right font-semibold">{formatCurrency(item.spent)}</td>
+                            <td className={`p-4 align-middle text-right font-bold ${isOver ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>
+                              {formatCurrency(item.remaining)}
+                            </td>
+                            <td className="p-4 align-middle">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full transition-all duration-500 ${
+                                      isOver ? 'bg-destructive' : percentage > 80 ? 'bg-yellow-500' : 'bg-primary'
+                                    }`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-bold min-w-[30px]">{percentage.toFixed(0)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-muted/30 font-bold border-t-2">
+                        <td className="p-4 align-middle">Total</td>
+                        <td className="p-4 align-middle text-right">{formatCurrency(totalBudget)}</td>
+                        <td className="p-4 align-middle text-right">{formatCurrency(totalSpent)}</td>
+                        <td className={`p-4 align-middle text-right font-black ${totalRemaining < 0 ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>
+                          {formatCurrency(totalRemaining)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                          {formatCurrency(item.budget)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 font-medium">
-                          {formatCurrency(item.spent)}
-                        </td>
-                        <td
-                          className={`px-6 py-4 whitespace-nowrap text-right text-sm font-semibold ${item.remaining < 0 ? "text-red-600" : "text-gray-900"}`}
-                        >
-                          {formatCurrency(item.remaining)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
-                              <div
-                                className={`h-full transition-all duration-500 ease-out ${
-                                  percentage >= 100
-                                    ? "bg-red-500"
-                                    : percentage >= 80
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
+                        <td className="p-4 align-middle">
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full transition-all duration-500 ${
+                                  totalSpent > totalBudget ? 'bg-destructive' : (totalSpent/totalBudget) > 0.8 ? 'bg-yellow-500' : 'bg-primary'
                                 }`}
-                                style={{ width: `${Math.min(100, percentage)}%` }}
+                                style={{ width: `${Math.min(100, (totalSpent/totalBudget)*100)}%` }}
                               />
                             </div>
-                            <span className="text-xs font-medium text-gray-600 w-12 text-right">
-                              {percentage.toFixed(0)}%
-                            </span>
+                            <span className="text-[10px] font-black min-w-[30px]">{((totalSpent/totalBudget)*100).toFixed(0)}%</span>
                           </div>
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-              </tbody>
-              {!loading && (
-                <tfoot className="bg-gray-50 border-t-2">
-                  <tr className="font-bold">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {formatCurrency(totalBudget)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {formatCurrency(totalSpent)}
-                    </td>
-                    <td
-                      className={`px-6 py-4 whitespace-nowrap text-right text-sm ${totalRemaining < 0 ? "text-red-600" : "text-gray-900"}`}
-                    >
-                      {formatCurrency(totalRemaining)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full transition-all duration-500 ease-out ${
-                              getPercentageUsed(totalSpent, totalBudget) >= 100
-                                ? "bg-red-500"
-                                : getPercentageUsed(totalSpent, totalBudget) >= 80
-                                  ? "bg-yellow-500"
-                                  : "bg-green-500"
-                            }`}
-                            style={{
-                              width: `${Math.min(100, getPercentageUsed(totalSpent, totalBudget))}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-gray-700 w-12 text-right">
-                          {getPercentageUsed(totalSpent, totalBudget).toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-        </div>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Summary Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white border-l-4 border-l-blue-500 border border-gray-200 rounded-lg p-5 shadow-sm">
-            <div className="text-sm font-medium text-blue-600 mb-1">Total Monthly Budget</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? <Skeleton className="w-24 h-9" /> : formatCurrency(totalBudget)}
-            </div>
-          </div>
-          <div className="bg-white border-l-4 border-l-orange-500 border border-gray-200 rounded-lg p-5 shadow-sm">
-            <div className="text-sm font-medium text-orange-600 mb-1">Total Month Spending</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {loading ? <Skeleton className="w-24 h-9" /> : formatCurrency(totalSpent)}
-            </div>
-          </div>
-          <div
-            className={`border rounded-lg p-5 shadow-sm border-l-4 ${
-              loading
-                ? "bg-white border-gray-200 border-l-gray-400"
-                : totalRemaining < 0
-                  ? "bg-white border-red-200 border-l-red-500"
-                  : "bg-white border-green-200 border-l-green-500"
-            }`}
-          >
-            <div
-              className={`text-sm font-medium mb-1 ${
-                loading ? "text-gray-600" : totalRemaining < 0 ? "text-red-600" : "text-green-600"
-              }`}
-            >
-              Remaining Budget
-            </div>
-            <div
-              className={`text-3xl font-bold ${
-                loading ? "text-gray-900" : totalRemaining < 0 ? "text-red-700" : "text-green-700"
-              }`}
-            >
-              {loading ? <Skeleton className="w-24 h-9" /> : formatCurrency(totalRemaining)}
-            </div>
-          </div>
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="border-l-4 border-l-primary">
+            <CardHeader className="pb-2">
+              <CardDescription>Budget Limit</CardDescription>
+              <CardTitle className="text-2xl">{formatCurrency(totalBudget)}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mt-1">Total planned expenses for this month.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-destructive">
+            <CardHeader className="pb-2">
+              <CardDescription>Actual Spending</CardDescription>
+              <CardTitle className="text-2xl">{formatCurrency(totalSpent)}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mt-1">Total money spent so far.</p>
+            </CardContent>
+          </Card>
+          <Card className={`border-l-4 ${totalRemaining < 0 ? 'border-l-destructive' : 'border-l-green-500'}`}>
+            <CardHeader className="pb-2">
+              <CardDescription>Remaining</CardDescription>
+              <CardTitle className={`text-2xl ${totalRemaining < 0 ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>
+                {formatCurrency(totalRemaining)}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalRemaining < 0 ? 'You are over budget!' : 'Available to spend before month end.'}
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

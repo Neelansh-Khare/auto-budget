@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 import { Nav } from "@/components/Nav";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { 
+  Upload as UploadIcon, 
+  FileText, 
+  Table as TableIcon, 
+  CheckCircle2, 
+  AlertCircle,
+  FileCode,
+  Info
+} from "lucide-react";
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -57,86 +68,114 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Nav />
-      <div className="max-w-xl mx-auto p-6 space-y-6 bg-white shadow-md rounded-lg mt-10">
-        <h1 className="text-3xl font-bold text-center text-gray-800">Upload Statements</h1>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Upload Type:
-            </label>
-            <div className="flex space-x-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  className="form-radio"
-                  name="uploadType"
-                  value="csv"
-                  checked={uploadType === "csv"}
-                  onChange={() => setUploadType("csv")}
-                />
-                <span className="ml-2 text-gray-900">CSV Upload</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  className="form-radio"
-                  name="uploadType"
-                  value="llm"
-                  checked={uploadType === "llm"}
-                  onChange={() => setUploadType("llm")}
-                />
-                <span className="ml-2 text-gray-900">Statement (LLM) Upload</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="file-input" className="block text-sm font-medium text-gray-700 mb-2">
-              Choose File:
-            </label>
-            <input
-              id="file-input"
-              type="file"
-              accept={uploadType === "csv" ? ".csv" : ".txt"}
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-            {selectedFile && (
-              <p className="mt-2 text-sm text-gray-600">Selected file: {selectedFile.name}</p>
-            )}
-          </div>
-
-          <button
-            onClick={handleUpload}
-            disabled={!selectedFile || isLoading}
-            className="w-full px-4 py-2 text-white font-semibold rounded-md
-                       bg-blue-600 hover:bg-blue-700
-                       disabled:bg-blue-300 disabled:cursor-not-allowed
-                       transition duration-200"
-          >
-            {isLoading ? "Uploading..." : "Upload and Process"}
-          </button>
+      <main className="max-w-2xl mx-auto p-4 md:p-8 space-y-8 mt-4 md:mt-10">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Import Statements</h1>
+          <p className="text-muted-foreground">Manually upload CSVs or text statements for processing.</p>
         </div>
 
-        {message && (
-          <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md">
-            {message}
-          </div>
-        )}
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-800 rounded-md">
-            Error: {error}
-          </div>
-        )}
-      </div>
+        <Card className="border-primary/20 bg-primary/5 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <UploadIcon className="h-5 w-5" /> Select File
+            </CardTitle>
+            <CardDescription>Choose between structured CSVs or plain text bank statements.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Type Selector */}
+            <div className="grid grid-cols-2 gap-4">
+              <div 
+                className={`p-4 border rounded-lg cursor-pointer transition-all flex flex-col items-center gap-2 ${
+                  uploadType === "csv" 
+                    ? "border-primary bg-primary/10 ring-1 ring-primary" 
+                    : "bg-background hover:bg-muted"
+                }`}
+                onClick={() => setUploadType("csv")}
+              >
+                <TableIcon className={`h-6 w-6 ${uploadType === "csv" ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="text-sm font-bold">CSV File</span>
+              </div>
+              <div 
+                className={`p-4 border rounded-lg cursor-pointer transition-all flex flex-col items-center gap-2 ${
+                  uploadType === "llm" 
+                    ? "border-primary bg-primary/10 ring-1 ring-primary" 
+                    : "bg-background hover:bg-muted"
+                }`}
+                onClick={() => setUploadType("llm")}
+              >
+                <FileCode className={`h-6 w-6 ${uploadType === "llm" ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="text-sm font-bold">Text Statement</span>
+              </div>
+            </div>
+
+            {/* File Input */}
+            <div className="space-y-4">
+               <div className="relative group">
+                <input
+                  id="file-input"
+                  type="file"
+                  accept={uploadType === "csv" ? ".csv" : ".txt"}
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div className="border-2 border-dashed border-muted-foreground/20 rounded-xl p-8 flex flex-col items-center justify-center gap-3 group-hover:border-primary/50 transition-colors bg-background/50">
+                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold">
+                      {selectedFile ? selectedFile.name : "Click to browse or drag and drop"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {uploadType === "csv" ? "Only .csv files supported" : "Only .txt or .pdf text supported"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Messages */}
+            {message && (
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 flex gap-3 text-sm font-medium">
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                <p>{message}</p>
+              </div>
+            )}
+            {error && (
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive flex gap-3 text-sm font-medium">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <p>Error: {error}</p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button 
+              className="w-full h-12 text-lg" 
+              onClick={handleUpload} 
+              disabled={!selectedFile || isLoading}
+              isLoading={isLoading}
+              leftIcon={UploadIcon}
+            >
+              Upload and Process
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Tips Section */}
+        <div className="bg-muted/30 rounded-xl p-6 border border-dashed">
+          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+            <Info className="h-4 w-4 text-primary" /> Pro Tips
+          </h3>
+          <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
+            <li>For CSVs, ensure columns for Date, Description, and Amount are present.</li>
+            <li>Text statements are parsed using AI to extract transaction details.</li>
+            <li>Large files might take a few seconds to process.</li>
+            <li>Duplicates are automatically ignored based on date and description.</li>
+          </ul>
+        </div>
+      </main>
     </div>
   );
 }

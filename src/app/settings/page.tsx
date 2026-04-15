@@ -4,14 +4,49 @@ import { useEffect, useState, useCallback } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { Nav } from "@/components/Nav";
 import { useToast } from "@/components/ToastContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/Card";
+import { Button } from "@/components/Button";
+import { Input } from "@/components/Input";
+import { Badge } from "@/components/Badge";
+import { Skeleton } from "@/components/Skeleton";
 import { BALANCE_ROLES } from "@/lib/constants";
+import { 
+  Settings as SettingsIcon, 
+  CreditCard, 
+  Share2, 
+  Bot, 
+  FileSpreadsheet, 
+  Save, 
+  RefreshCcw, 
+  CheckCircle2, 
+  AlertCircle,
+  ExternalLink,
+  ShieldCheck,
+  Zap,
+  Globe
+} from "lucide-react";
 
 type Account = { id: string; name: string; mappedBalanceRole: string | null };
 
+interface Settings {
+  exportDestination?: string;
+  autoSyncEnabled?: boolean;
+  autoSyncCron?: string;
+  autoPushToSheets?: boolean;
+  llmEnabled?: boolean;
+  llmProvider?: string;
+  llmModel?: string;
+  confidenceThreshold?: number;
+}
+
+interface SheetSettings {
+  spreadsheetId?: string;
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "accounts" | "integrations">("general");
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
-  const [sheet, setSheet] = useState<Record<string, unknown> | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [sheet, setSheet] = useState<SheetSettings | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [googleUrl, setGoogleUrl] = useState("");
@@ -20,6 +55,7 @@ export default function SettingsPage() {
   const [isTestingLLM, setIsTestingLLM] = useState(false);
   const [isTestingSheets, setIsTestingSheets] = useState(false);
   const [isTestingPlaid, setIsTestingPlaid] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { success, error, info } = useToast();
 
   const load = useCallback(async () => {
@@ -44,6 +80,7 @@ export default function SettingsPage() {
   }, [load]);
 
   async function save() {
+    setIsSaving(true);
     try {
       const resp = await fetch("/api/settings", {
         method: "POST",
@@ -61,6 +98,8 @@ export default function SettingsPage() {
       }
     } catch {
       error("An error occurred while saving settings");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -148,177 +187,222 @@ export default function SettingsPage() {
     }
   }
 
+  const tabs = [
+    { id: "general", label: "General", icon: SettingsIcon },
+    { id: "accounts", label: "Accounts", icon: CreditCard },
+    { id: "integrations", label: "Integrations", icon: Share2 },
+  ] as const;
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-background">
       <Nav />
-      <div className="max-w-4xl mx-auto p-6 space-y-6 pb-20">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <button
-            onClick={save}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 shadow-sm transition-all active:scale-95"
-          >
-            Save all changes
-          </button>
+      <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 pb-24">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+            <p className="text-muted-foreground mt-1">Configure your sync preferences and account mappings.</p>
+          </div>
+          <Button variant="primary" onClick={save} isLoading={isSaving} leftIcon={Save}>
+            Save Changes
+          </Button>
         </div>
 
-        <div className="flex border-b border-gray-200">
-          {(["general", "accounts", "integrations"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-                activeTab === tab
-                  ? "border-green-600 text-green-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        {/* Tab Navigation */}
+        <div className="flex border-b">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  activeTab === tab.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="space-y-6">
-          {activeTab === "general" && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <h2 className="text-lg font-semibold">Export Destination</h2>
-                <p className="text-sm text-gray-500">Choose where you want your budget data to be primarily stored and viewed.</p>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <label
-                    className={`flex flex-col p-4 border rounded-lg cursor-pointer transition-all ${
-                      settings?.exportDestination === "native" || !settings?.exportDestination
-                        ? "border-green-600 bg-green-50 ring-1 ring-green-600"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="exportDestination"
-                        value="native"
-                        checked={settings?.exportDestination === "native" || !settings?.exportDestination}
-                        onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
-                        className="text-green-600 focus:ring-green-600"
-                      />
-                      <span className="font-medium">Native UI</span>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500">Built-in budget tracking with charts and tables.</p>
-                  </label>
-                  <label
-                    className={`flex flex-col p-4 border rounded-lg cursor-pointer transition-all ${
-                      settings?.exportDestination === "google_sheets"
-                        ? "border-green-600 bg-green-50 ring-1 ring-green-600"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="exportDestination"
-                        value="google_sheets"
-                        checked={settings?.exportDestination === "google_sheets"}
-                        onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
-                        className="text-green-600 focus:ring-green-600"
-                      />
-                      <span className="font-medium">Google Sheets</span>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-500">Sync data to your own customizable spreadsheet.</p>
-                  </label>
-                </div>
-              </div>
-
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <h2 className="text-lg font-semibold">Automation</h2>
-                <div className="space-y-4">
-                  <label className="flex items-start gap-3 group cursor-pointer">
+        {/* General Tab */}
+        {activeTab === "general" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Export Destination</CardTitle>
+                <CardDescription>Where your budget data should be primarily stored.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid sm:grid-cols-2 gap-4">
+                <div 
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    settings?.exportDestination === "native" || !settings?.exportDestination
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  }`}
+                  onClick={() => setSettings({ ...settings, exportDestination: "native" })}
+                >
+                   <div className="flex items-center gap-3">
                     <input
-                      type="checkbox"
-                      checked={(settings?.autoSyncEnabled as boolean) || false}
-                      onChange={(e) => setSettings({ ...settings, autoSyncEnabled: e.target.checked })}
-                      className="mt-1 rounded border-gray-300 text-green-600 focus:ring-green-600"
+                      type="radio"
+                      name="exportDestination"
+                      value="native"
+                      checked={settings?.exportDestination === "native" || !settings?.exportDestination}
+                      onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
+                      className="text-primary focus:ring-primary h-4 w-4"
                     />
-                    <div>
-                      <span className="text-sm font-medium group-hover:text-gray-700 transition-colors">Auto-sync daily</span>
-                      <p className="text-xs text-gray-500">Automatically pull latest transactions from your bank.</p>
+                    <div className="flex flex-col">
+                      <span className="font-bold">Native UI</span>
+                      <span className="text-xs text-muted-foreground">Built-in tracking with charts.</span>
                     </div>
-                  </label>
-                  {settings?.autoSyncEnabled as boolean && (
-                    <div className="ml-7 space-y-2">
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cron Schedule</label>
-                      <input
-                        value={(settings?.autoSyncCron as string) || "0 9 * * *"}
-                        onChange={(e) => setSettings({ ...settings, autoSyncCron: e.target.value })}
-                        className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
-                        placeholder="0 9 * * *"
-                      />
-                      <p className="text-[10px] text-gray-400">Default: Every day at 9:00 AM (UTC)</p>
-                    </div>
-                  )}
-                  <label className="flex items-start gap-3 group cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={(settings?.autoPushToSheets as boolean) || false}
-                      onChange={(e) => setSettings({ ...settings, autoPushToSheets: e.target.checked })}
-                      className="mt-1 rounded border-gray-300 text-green-600 focus:ring-green-600"
-                    />
-                    <div>
-                      <span className="text-sm font-medium group-hover:text-gray-700 transition-colors">Auto-push to Sheets</span>
-                      <p className="text-xs text-gray-500">Push categorized data to Google Sheets immediately after sync.</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "accounts" && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Plaid Connection</h2>
-                  <div className="flex items-center gap-3">
-                    {isPlaidConnected && (
-                      <button
-                        onClick={testPlaid}
-                        disabled={isTestingPlaid}
-                        className="text-xs px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full border border-gray-200 transition-all disabled:opacity-50"
-                      >
-                        {isTestingPlaid ? "Testing..." : "Test Connection"}
-                      </button>
-                    )}
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        isPlaidConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {isPlaidConnected ? "Connected" : "Disconnected"}
-                    </span>
                   </div>
                 </div>
-                <p className="text-sm text-gray-500">Connect and manage your bank accounts securely through Plaid.</p>
-                {linkToken ? (
-                  <button
-                    onClick={() => open()}
-                    disabled={!ready}
-                    className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                  >
-                    {ready ? "Connect New Institution" : "Loading Plaid..."}
-                  </button>
-                ) : (
-                  <div className="h-10 bg-gray-100 rounded-lg animate-pulse" />
-                )}
-              </div>
+                <div 
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    settings?.exportDestination === "google_sheets"
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  }`}
+                  onClick={() => setSettings({ ...settings, exportDestination: "google_sheets" })}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="exportDestination"
+                      value="google_sheets"
+                      checked={settings?.exportDestination === "google_sheets"}
+                      onChange={(e) => setSettings({ ...settings, exportDestination: e.target.value })}
+                      className="text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-bold">Google Sheets</span>
+                      <span className="text-xs text-muted-foreground">Sync to your own spreadsheet.</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <h2 className="text-lg font-semibold">Account Mapping</h2>
-                <p className="text-sm text-gray-500">Map your bank accounts to specific roles to ensure balances are tracked correctly.</p>
-                <div className="space-y-3">
-                  {accounts.map((a) => (
-                    <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
-                      <div>
-                        <span className="text-sm font-medium">{a.name}</span>
-                        <p className="text-[10px] text-gray-400 font-mono">{a.id}</p>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-xl">Automation</CardTitle>
+                </div>
+                <CardDescription>Keep your data fresh with automatic updates.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
+                  <input
+                    type="checkbox"
+                    id="autoSync"
+                    checked={(settings?.autoSyncEnabled as boolean) || false}
+                    onChange={(e) => setSettings({ ...settings, autoSyncEnabled: e.target.checked })}
+                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1 space-y-3">
+                    <label htmlFor="autoSync" className="text-sm font-bold leading-none cursor-pointer">Daily Bank Sync</label>
+                    <p className="text-xs text-muted-foreground leading-normal">
+                      Automatically pull latest transactions from your bank every day.
+                    </p>
+                    {settings?.autoSyncEnabled && (
+                      <div className="space-y-2 pt-2">
+                        <label className="text-xs font-bold text-muted-foreground uppercase">Cron Schedule</label>
+                        <Input 
+                          value={(settings?.autoSyncCron as string) || "0 9 * * *"}
+                          onChange={(e) => setSettings({ ...settings, autoSyncCron: e.target.value })}
+                          placeholder="0 9 * * *"
+                          className="h-8 max-w-[200px]"
+                        />
+                        <p className="text-[10px] text-muted-foreground italic">Default: Every day at 9:00 AM (UTC)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
+                  <input
+                    type="checkbox"
+                    id="autoPush"
+                    checked={(settings?.autoPushToSheets as boolean) || false}
+                    onChange={(e) => setSettings({ ...settings, autoPushToSheets: e.target.checked })}
+                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1 space-y-1.5">
+                    <label htmlFor="autoPush" className="text-sm font-bold leading-none cursor-pointer">Auto-push to Sheets</label>
+                    <p className="text-xs text-muted-foreground leading-normal">
+                      Push categorized data to Google Sheets immediately after sync.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Accounts Tab */}
+        {activeTab === "accounts" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl">Plaid Connection</CardTitle>
+                  </div>
+                  <CardDescription>Manage your secure bank link.</CardDescription>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                   {isPlaidConnected ? (
+                    <Badge variant="success" className="flex gap-1 items-center">
+                      <CheckCircle2 className="h-3 w-3" /> Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="flex gap-1 items-center">
+                      <AlertCircle className="h-3 w-3" /> Disconnected
+                    </Badge>
+                  )}
+                  {isPlaidConnected && (
+                    <Button variant="ghost" size="sm" onClick={testPlaid} isLoading={isTestingPlaid} className="h-6 text-[10px] uppercase font-bold tracking-wider">
+                      Test Link
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Securely link your bank accounts. Your credentials are never stored by AutoBudgeter.
+                </p>
+                {linkToken ? (
+                  <Button 
+                    variant="primary" 
+                    onClick={() => open()} 
+                    disabled={!ready}
+                    leftIcon={RefreshCcw}
+                  >
+                    {isPlaidConnected ? "Connect Another Institution" : "Connect with Plaid"}
+                  </Button>
+                ) : (
+                  <Skeleton className="h-10 w-48" />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Account Mapping</CardTitle>
+                <CardDescription>Assign roles to your bank accounts.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {accounts.length > 0 ? (
+                  accounts.map((a) => (
+                    <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4 bg-muted/20">
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-sm">{a.name}</span>
+                        <p className="text-[10px] text-muted-foreground font-mono">{a.id}</p>
                       </div>
                       <select
                         value={a.mappedBalanceRole || ""}
@@ -329,80 +413,86 @@ export default function SettingsPage() {
                             ),
                           )
                         }
-                        className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                        className="flex h-9 w-full sm:w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <option value="">Unmapped</option>
                         {BALANCE_ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
+                          <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
                     </div>
-                  ))}
-                  {accounts.length === 0 && (
-                    <div className="text-center py-6 border border-dashed rounded-lg bg-gray-50">
-                      <p className="text-sm text-gray-500">No accounts connected yet.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 border border-dashed rounded-lg">
+                    <CreditCard className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground font-medium">No accounts connected.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-          {activeTab === "integrations" && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">AI Categorization (LLM)</h2>
-                  {settings?.llmEnabled as boolean && (
-                    <button
-                      onClick={testLLM}
-                      disabled={isTestingLLM}
-                      className="text-xs px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full border border-gray-200 transition-all disabled:opacity-50"
-                    >
-                      {isTestingLLM ? "Testing..." : "Test Connection"}
-                    </button>
-                  )}
+        {/* Integrations Tab */}
+        {activeTab === "integrations" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* LLM Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl">AI Categorization</CardTitle>
+                  </div>
+                  <CardDescription>Automate categorization using Large Language Models.</CardDescription>
                 </div>
-                <div className="flex items-center gap-3">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={(settings?.llmEnabled as boolean) || false}
-                      onChange={(e) => setSettings({ ...settings, llmEnabled: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                    <span className="ml-3 text-sm font-medium text-gray-700">Enable Smart Categorization</span>
+                <div className="flex flex-col items-end gap-2">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    id="llm-toggle"
+                    checked={(settings?.llmEnabled as boolean) || false}
+                    onChange={(e) => setSettings({ ...settings, llmEnabled: e.target.checked })}
+                  />
+                  <label htmlFor="llm-toggle" className="relative inline-flex items-center cursor-pointer">
+                    <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
                   </label>
+                  {settings?.llmEnabled && (
+                    <Button variant="ghost" size="sm" onClick={testLLM} isLoading={isTestingLLM} className="h-6 text-[10px] uppercase font-bold tracking-wider">
+                      Test AI
+                    </Button>
+                  )}
                 </div>
-
-                {settings?.llmEnabled as boolean && (
-                  <div className="grid sm:grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-500 uppercase">Provider</label>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {settings?.llmEnabled ? (
+                  <div className="grid sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/20 border">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Provider</label>
                       <select
                         value={(settings?.llmProvider as string) || ""}
                         onChange={(e) => setSettings({ ...settings, llmProvider: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <option value="">Select provider</option>
-                        <option value="openrouter">OpenRouter</option>
-                        <option value="gemini">Gemini</option>
+                        <option value="openrouter">OpenRouter (Multiple models)</option>
+                        <option value="gemini">Google Gemini</option>
                       </select>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-500 uppercase">Model</label>
-                      <input
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Model Identifier</label>
+                      <Input 
                         value={(settings?.llmModel as string) || ""}
                         onChange={(e) => setSettings({ ...settings, llmModel: e.target.value })}
-                        placeholder="e.g. gpt-4o, gemini-pro"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                        placeholder="e.g. gpt-4o-mini"
+                        className="h-9"
                       />
                     </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs font-medium text-gray-500 uppercase">Confidence Threshold ({(settings?.confidenceThreshold as number) || 0.8})</label>
+                    <div className="space-y-2 sm:col-span-2 pt-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Confidence Threshold</label>
+                        <span className="text-xs font-black">{(settings?.confidenceThreshold as number || 0.8).toFixed(2)}</span>
+                      </div>
                       <input
                         type="range"
                         min="0"
@@ -412,74 +502,79 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setSettings({ ...settings, confidenceThreshold: Number(e.target.value) })
                         }
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+                        className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                       />
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span>Lax (0.0)</span>
-                        <span>Strict (1.0)</span>
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>Experimental (0.0)</span>
+                        <span>Conservative (1.0)</span>
                       </div>
                     </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Enable smart categorization to automatically organize your spending.</p>
                 )}
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="bg-white border rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Google Sheets</h2>
-                  <div className="flex items-center gap-3">
-                    {isGoogleConnected && (
-                      <button
-                        onClick={testSheets}
-                        disabled={isTestingSheets}
-                        className="text-xs px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full border border-gray-200 transition-all disabled:opacity-50"
-                      >
-                        {isTestingSheets ? "Testing..." : "Test Connection"}
-                      </button>
-                    )}
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        isGoogleConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      }`}
+            {/* Google Sheets Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl">Google Sheets</CardTitle>
+                  </div>
+                  <CardDescription>Export your financial data to a cloud spreadsheet.</CardDescription>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                   {isGoogleConnected ? (
+                    <Badge variant="success" className="flex gap-1 items-center">
+                      <CheckCircle2 className="h-3 w-3" /> Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="flex gap-1 items-center">
+                      <AlertCircle className="h-3 w-3" /> Disconnected
+                    </Badge>
+                  )}
+                  {isGoogleConnected && (
+                    <Button variant="ghost" size="sm" onClick={testSheets} isLoading={isTestingSheets} className="h-6 text-[10px] uppercase font-bold tracking-wider">
+                      Test Push
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Spreadsheet ID</label>
+                  <Input 
+                    value={(sheet?.spreadsheetId as string) || ""}
+                    onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
+                    placeholder="Enter spreadsheet ID from URL"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Found in the URL: .../spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</p>
+                </div>
+
+                <div className="pt-2 border-t flex flex-col sm:flex-row gap-3">
+                  {googleUrl && (
+                    <a
+                      href={googleUrl}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-md border bg-background hover:bg-muted transition-colors text-sm font-medium"
                     >
-                      {isGoogleConnected ? "Connected" : "Disconnected"}
-                    </span>
-                  </div>
+                      <Globe className="h-4 w-4" />
+                      {isGoogleConnected ? "Change Google Account" : "Link Google Account"}
+                    </a>
+                  )}
+                  {isGoogleConnected && (
+                    <Button variant="outline" size="md" className="gap-2">
+                      <ExternalLink className="h-4 w-4" /> Open Spreadsheet
+                    </Button>
+                  )}
                 </div>
-                
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 uppercase">Spreadsheet ID</label>
-                    <input
-                      value={(sheet?.spreadsheetId as string) || ""}
-                      onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
-                      placeholder="Enter spreadsheet ID from URL"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                    />
-                    <p className="text-[10px] text-gray-400">Found in the URL: docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</p>
-                  </div>
-
-                  <div className="pt-2">
-                    {googleUrl && (
-                      <a
-                        href={googleUrl}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all gap-2"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        {isGoogleConnected ? "Reconnect Google Account" : "Connect Google Account"}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
