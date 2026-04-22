@@ -36,13 +36,29 @@ export default function ReviewPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [createRuleMap, setCreateRuleMap] = useState<Map<string, boolean>>(new Map());
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const { success, error, info } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetch("/api/transactions?status=needs_review").then((r) => r.json());
-      setItems(data.transactions || []);
+      const txs = data.transactions || [];
+      setItems(txs);
+      
+      if (txs.length > 0) {
+        // Fetch suggestions
+        const suggResp = await fetch("/api/transactions/suggestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactions: txs.map((t: any) => ({ id: t.id, merchant: t.merchant, description: t.description })) }),
+        });
+        if (suggResp.ok) {
+          const { suggestions } = await suggResp.json();
+          setSuggestions(suggestions);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -51,6 +67,36 @@ export default function ReviewPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "j") {
+        setFocusedIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+      } else if (e.key === "k") {
+        setFocusedIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === "x") {
+        const item = filteredItems[focusedIndex];
+        if (item) toggleSelect(item.id);
+      } else if (e.key === "i") {
+        const item = filteredItems[focusedIndex];
+        if (item) markIgnored(item.id);
+      } else if (e.key === "t") {
+        const item = filteredItems[focusedIndex];
+        if (item) markTransfer(item.id);
+      } else if (e.key === "Enter") {
+        const item = filteredItems[focusedIndex];
+        if (item && item.category) {
+          update(item.id, item.category, "categorized", createRuleMap.get(item.id) || false);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focusedIndex, items, searchQuery, createRuleMap]);
 
   async function update(id: string, category: string, status = "categorized", createRule = false) {
     if (!category) return;
@@ -249,8 +295,8 @@ export default function ReviewPage() {
             ))
           ) : (
             <>
-              {filteredItems.map((t) => (
-                <Card key={t.id} className={`transition-all ${selected.has(t.id) ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+              {filteredItems.map((t, index) => (
+                <Card key={t.id} className={`transition-all ${index === focusedIndex ? 'ring-2 ring-primary border-primary shadow-lg shadow-primary/10' : ''} ${selected.has(t.id) ? 'bg-primary/5' : 'hover:border-primary/50'}`}>
                   <CardContent className="p-4 flex flex-col md:flex-row gap-4">
                     <div className="flex items-start gap-4 flex-1">
                       <button 
@@ -289,6 +335,24 @@ export default function ReviewPage() {
                             </>
                           )}
                         </div>
+
+                        {/* Suggestions */}
+                        {suggestions[t.id] && suggestions[t.id].length > 0 && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground">Suggested:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {suggestions[t.id].map(cat => (
+                                <button
+                                  key={cat}
+                                  onClick={() => update(t.id, cat, "categorized", createRuleMap.get(t.id) || false)}
+                                  className="px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground text-xs font-medium transition-colors"
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Actions Row */}
                         <div className="mt-4 flex flex-wrap gap-2 items-center">

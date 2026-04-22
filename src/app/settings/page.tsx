@@ -233,8 +233,13 @@ export default function SettingsPage() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Export Destination</CardTitle>
-                <CardDescription>Where your budget data should be primarily stored.</CardDescription>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-xl">Export Destination</CardTitle>
+                </div>
+                <CardDescription>
+                  Choose where your categorized transactions should be stored. You can switch this at any time.
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid sm:grid-cols-2 gap-4">
                 <div 
@@ -256,7 +261,7 @@ export default function SettingsPage() {
                     />
                     <div className="flex flex-col">
                       <span className="font-bold">Native UI</span>
-                      <span className="text-xs text-muted-foreground">Built-in tracking with charts.</span>
+                      <span className="text-xs text-muted-foreground">Keep data within AutoBudgeter. Best for speed and privacy.</span>
                     </div>
                   </div>
                 </div>
@@ -279,7 +284,7 @@ export default function SettingsPage() {
                     />
                     <div className="flex flex-col">
                       <span className="font-bold">Google Sheets</span>
-                      <span className="text-xs text-muted-foreground">Sync to your own spreadsheet.</span>
+                      <span className="text-xs text-muted-foreground">Sync to a Google Spreadsheet. Best for custom analysis and sharing.</span>
                     </div>
                   </div>
                 </div>
@@ -290,12 +295,12 @@ export default function SettingsPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-xl">Automation</CardTitle>
+                  <CardTitle className="text-xl">Automation & Schedule</CardTitle>
                 </div>
-                <CardDescription>Keep your data fresh with automatic updates.</CardDescription>
+                <CardDescription>Configure how frequently AutoBudgeter should sync with your bank.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30 border border-transparent hover:border-border transition-colors">
                   <input
                     type="checkbox"
                     id="autoSync"
@@ -304,26 +309,37 @@ export default function SettingsPage() {
                     className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                   />
                   <div className="flex-1 space-y-3">
-                    <label htmlFor="autoSync" className="text-sm font-bold leading-none cursor-pointer">Daily Bank Sync</label>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="autoSync" className="text-sm font-bold leading-none cursor-pointer">Daily Bank Sync</label>
+                      <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Recommended</Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground leading-normal">
-                      Automatically pull latest transactions from your bank every day.
+                      Automatically pull latest transactions from your bank. Requires an active Plaid connection.
                     </p>
                     {settings?.autoSyncEnabled && (
-                      <div className="space-y-2 pt-2">
-                        <label className="text-xs font-bold text-muted-foreground uppercase">Cron Schedule</label>
+                      <div className="space-y-2 pt-2 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-xs font-bold text-muted-foreground uppercase">Cron Schedule</label>
+                          <div className="group relative">
+                            <AlertCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                              Standard Cron format: minute hour day-of-month month day-of-week.
+                            </div>
+                          </div>
+                        </div>
                         <Input 
                           value={(settings?.autoSyncCron as string) || "0 9 * * *"}
                           onChange={(e) => setSettings({ ...settings, autoSyncCron: e.target.value })}
                           placeholder="0 9 * * *"
                           className="h-8 max-w-[200px]"
                         />
-                        <p className="text-[10px] text-muted-foreground italic">Default: Every day at 9:00 AM (UTC)</p>
+                        <p className="text-[10px] text-muted-foreground italic">Current: Every day at 9:00 AM (UTC)</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30 border border-transparent hover:border-border transition-colors">
                   <input
                     type="checkbox"
                     id="autoPush"
@@ -334,7 +350,7 @@ export default function SettingsPage() {
                   <div className="flex-1 space-y-1.5">
                     <label htmlFor="autoPush" className="text-sm font-bold leading-none cursor-pointer">Auto-push to Sheets</label>
                     <p className="text-xs text-muted-foreground leading-normal">
-                      Push categorized data to Google Sheets immediately after sync.
+                      If enabled, data will be pushed to your Google Spreadsheet immediately after each bank sync.
                     </p>
                   </div>
                 </div>

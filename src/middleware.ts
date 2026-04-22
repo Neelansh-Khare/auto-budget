@@ -3,7 +3,14 @@ import type { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, SessionData } from "./lib/session";
 
-const PUBLIC_PATHS = ["/api/auth/login", "/api/auth/status", "/auth/login", "/api/health"];
+const PUBLIC_PATHS = [
+  "/api/auth/login", 
+  "/api/auth/register", 
+  "/api/auth/status", 
+  "/auth/login", 
+  "/auth/register", 
+  "/api/health"
+];
 
 export async function middleware(req: NextRequest) {
   if (process.env.AUTH_DISABLED === "true") {

@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 
 export type SessionData = {
   authenticated?: boolean;
+  userId?: string;
+  userEmail?: string;
 };
 
 const password = process.env.ENCRYPTION_KEY;

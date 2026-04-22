@@ -56,8 +56,24 @@ enum ExportDestination {
   google_sheets
 }
 
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String?
+  accounts      Account[]
+  rules         Rule[]
+  sheetConfigs  SheetConfig[]
+  settings      Settings[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
 model Account {
   id                  String       @id @default(uuid())
+  userId              String
+  user                User         @relation(fields: [userId], references: [id])
   provider            AccountProvider
   providerAccountId   String
   name                String
@@ -70,7 +86,7 @@ model Account {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  @@unique([provider, providerAccountId])
+  @@unique([userId, provider, providerAccountId])
 }
 
 model Transaction {
@@ -96,6 +112,8 @@ model Transaction {
 
 model Rule {
   id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
   name        String
   pattern     String
   patternType RulePatternType
@@ -107,6 +125,8 @@ model Rule {
 
 model SheetConfig {
   id                      String   @id @default(uuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id])
   spreadsheetId           String
   runningBalanceSheetName String   @default("Running Balance")
   runningBalanceCells     Json     @default("{\"bank\":\"B2\",\"cc1\":\"D2\",\"cc2\":\"D4\"}")
@@ -115,10 +135,14 @@ model SheetConfig {
   googleRefreshToken      String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+
+  @@unique([userId])
 }
 
 model Settings {
   id                   String           @id @default(uuid())
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id])
   llmEnabled           Boolean          @default(false)
   llmProvider          String?
   llmModel             String?
@@ -131,10 +155,14 @@ model Settings {
   plaidAccessTokenEnc  String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
+
+  @@unique([userId])
 }
 
 model AuditLog {
   id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
   eventType String
   payload   Json
   createdAt DateTime @default(now())

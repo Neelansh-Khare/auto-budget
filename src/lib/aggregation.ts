@@ -6,13 +6,14 @@ export function getMonthKey(date: Date) {
   return { month: dt.month, year: dt.year, label: dt.toFormat("LLLL yyyy") };
 }
 
-export async function aggregateMonthTotals(date: Date) {
+export async function aggregateMonthTotals(date: Date, userId: string) {
   const { month, year } = getMonthKey(date);
   const start = DateTime.fromObject({ year, month, day: 1 }, { zone: "Asia/Kolkata" }).startOf("day");
   const end = start.endOf("month");
 
   const txns = await prisma.transaction.findMany({
     where: {
+      account: { userId },
       date: { gte: start.toJSDate(), lte: end.toJSDate() },
       pending: false,
       status: { notIn: ["ignored", "transfer", "removed"] },

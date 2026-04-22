@@ -7,11 +7,11 @@ import { pushAllToSheets } from "./sheets";
 import { getMonthKey, aggregateMonthTotals } from "./aggregation";
 import { TransactionStatus } from "../generated/prisma/enums";
 
-export async function performSync({ pushToSheets }: { pushToSheets?: boolean } = {}) {
+export async function performSync({ userId, pushToSheets }: { userId: string; pushToSheets?: boolean }) {
   const settings = await prisma.settings.upsert({
-    where: { id: "singleton" },
+    where: { userId },
     update: {},
-    create: { id: "singleton" },
+    create: { userId },
   });
 
   const accessTokenEnc = settings.plaidAccessTokenEnc;
@@ -21,7 +21,10 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
   const { decrypt } = await import("./encryption");
   const accessToken = decrypt(accessTokenEnc);
 
-  const anyAccount = await prisma.account.findFirst({ orderBy: { lastSyncedAt: "desc" } });
+  const anyAccount = await prisma.account.findFirst({
+    where: { userId },
+    orderBy: { lastSyncedAt: "desc" }
+  });
   const since = anyAccount?.lastSyncedAt ?? undefined;
 
   const plaidData = await syncFromPlaid({ accessToken, since });
@@ -30,7 +33,13 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
   // upsert accounts
   for (const acc of plaidData.accounts) {
     await prisma.account.upsert({
-      where: { provider_providerAccountId: { provider: "plaid", providerAccountId: acc.account_id } },
+      where: {
+        userId_provider_providerAccountId: {
+          userId,
+          provider: "plaid",
+          providerAccountId: acc.account_id
+        }
+      },
       update: {
         name: acc.name || acc.official_name || acc.mask || "Account",
         type: acc.type === "credit" ? "credit" : acc.type === "depository" ? "depository" : "other",
@@ -39,6 +48,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
         lastSyncedAt: now,
       },
       create: {
+        userId,
         provider: "plaid",
         providerAccountId: acc.account_id,
         name: acc.name || acc.official_name || acc.mask || "Account",
@@ -50,7 +60,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
     });
   }
 
-  const rules = await getEnabledRules();
+  const rules = await getEnabledRules(userId);
   let ingested = 0;
   let needsReviewCount = 0;
   let categorized = 0;
@@ -60,7 +70,13 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
     // We normalize: positive = expense, negative = refund
     const normalized = -t.amount;
     const account = await prisma.account.findUnique({
-      where: { provider_providerAccountId: { provider: "plaid", providerAccountId: t.account_id } },
+      where: {
+        userId_provider_providerAccountId: {
+          userId,
+          provider: "plaid",
+          providerAccountId: t.account_id
+        }
+      },
     });
     if (!account) continue;
 
@@ -107,6 +123,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
           try {
             await prisma.rule.create({
               data: {
+                userId,
                 name: `Auto-rule: ${llmResult.suggested_rule.pattern}`,
                 pattern: llmResult.suggested_rule.pattern,
                 patternType: llmResult.suggested_rule.pattern_type || "substring",
@@ -117,6 +134,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
             });
             await prisma.auditLog.create({
               data: {
+                userId,
                 eventType: "rule_auto_created",
                 payload: {
                   pattern: llmResult.suggested_rule.pattern,
@@ -163,7 +181,7 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
   }
 
   // recompute month totals
-  const monthTotals = await aggregateMonthTotals(now);
+  const monthTotals = await aggregateMonthTotals(now, userId);
 
   // Only push to sheets if:
   // 1. Explicitly requested via pushToSheets parameter, OR
@@ -173,15 +191,18 @@ export async function performSync({ pushToSheets }: { pushToSheets?: boolean } =
     (settings.autoPushToSheets && settings.exportDestination === "google_sheets");
 
   if (shouldPushToSheets) {
-    const accounts = await prisma.account.findMany();
+    const accounts = await prisma.account.findMany({
+      where: { userId }
+    });
     const bankBalance = accounts.find((a) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
     const cc1Balance = accounts.find((a) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;
     const cc2Balance = accounts.find((a) => a.mappedBalanceRole === "cc2")?.balanceCurrent ?? 0;
-    await pushAllToSheets({ bank: bankBalance, cc1: cc1Balance, cc2: cc2Balance, date: now });
+    await pushAllToSheets({ userId, bank: bankBalance, cc1: cc1Balance, cc2: cc2Balance, date: now });
   }
 
   await prisma.auditLog.create({
     data: {
+      userId,
       eventType: "sync_complete",
       payload: {
         ingested,

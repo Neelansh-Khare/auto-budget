@@ -34,7 +34,7 @@ export function getAuthUrl() {
   });
 }
 
-export async function storeGoogleToken(code: string) {
+export async function storeGoogleToken(userId: string, code: string) {
   const client = getOAuthClient();
   const { tokens } = await client.getToken(code);
   if (!tokens.refresh_token) {
@@ -42,18 +42,18 @@ export async function storeGoogleToken(code: string) {
   }
   const encrypted = encrypt(tokens.refresh_token);
   await prisma.sheetConfig.upsert({
-    where: { id: "singleton" },
+    where: { userId },
     update: { googleRefreshToken: encrypted },
     create: {
-      id: "singleton",
+      userId,
       spreadsheetId: "REPLACE_ME",
       googleRefreshToken: encrypted,
     },
   });
 }
 
-async function getSheetsClient() {
-  const cfg = await prisma.sheetConfig.findFirst();
+async function getSheetsClient(userId: string) {
+  const cfg = await prisma.sheetConfig.findUnique({ where: { userId } });
   if (!cfg || !cfg.googleRefreshToken) {
     throw new Error("Google not connected");
   }
@@ -69,22 +69,22 @@ function monthSheetName(date: Date) {
 }
 
 export async function updateRunningBalance({
+  userId,
   bank,
   cc1,
   cc2,
 }: {
+  userId: string;
   bank: number;
   cc1: number;
   cc2: number;
 }) {
-  const cfg = await prisma.sheetConfig.findFirst();
+  const cfg = await prisma.sheetConfig.findUnique({ where: { userId } });
   if (!cfg) throw new Error("Sheet config missing");
-  const sheets = await getSheetsClient();
+  const sheets = await getSheetsClient(userId);
   const sheetName = cfg.runningBalanceSheetName;
   const cells = cfg.runningBalanceCells as Record<string, string>;
   
-  // PRD Contract: Write only B2 (bank), D2 (cc1), D4 (cc2)
-  // NEVER write D3 - it contains formulas that must be preserved
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId: cfg.spreadsheetId,
     requestBody: {
@@ -101,19 +101,17 @@ export async function updateRunningBalance({
           range: `${sheetName}!${cells.cc2 || "D4"}`,
           values: [[cc2]],
         },
-        // D3 is intentionally excluded - contains formulas, never overwrite
       ],
       valueInputOption: "RAW",
     },
   });
 }
 
-async function ensureMonthlySheetExists(spreadsheetId: string, sheetName: string) {
-  const sheets = await getSheetsClient();
+async function ensureMonthlySheetExists(userId: string, spreadsheetId: string, sheetName: string) {
+  const sheets = await getSheetsClient(userId);
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
   const existing = meta.data.sheets?.find((s) => s.properties?.title === sheetName);
   if (existing) return;
-  // create sheet with categories and SUM row
   const categories = CATEGORY_BUDGETS.map((c) => c.name);
   const addSheetResponse = await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
@@ -134,12 +132,12 @@ async function ensureMonthlySheetExists(spreadsheetId: string, sheetName: string
   });
 }
 
-export async function updateMonthlySheet(date: Date) {
-  const cfg = await prisma.sheetConfig.findFirst();
+export async function updateMonthlySheet(userId: string, date: Date) {
+  const cfg = await prisma.sheetConfig.findUnique({ where: { userId } });
   if (!cfg) throw new Error("Sheet config missing");
-  const sheets = await getSheetsClient();
+  const sheets = await getSheetsClient(userId);
   const sheetName = monthSheetName(date);
-  await ensureMonthlySheetExists(cfg.spreadsheetId, sheetName);
+  await ensureMonthlySheetExists(userId, cfg.spreadsheetId, sheetName);
 
   const range = cfg.monthlyReadRange || "A1:B50";
   const data = await sheets.spreadsheets.values.get({
@@ -149,14 +147,14 @@ export async function updateMonthlySheet(date: Date) {
   const rows = data.data.values || [];
   const map = buildCategoryRowMap(rows);
 
-  const totals = await aggregateMonthTotals(date);
+  const totals = await aggregateMonthTotals(date, userId);
   const updates: { range: string; values: (string | number)[][] }[] = [];
   totals.forEach((value, category) => {
     const rowIdx = map.get(category);
     if (rowIdx === undefined) return;
     const label = rows[rowIdx]?.[0];
     if (label === "SUM") return;
-    const targetRow = rowIdx + 1; // 1-indexed for Sheets
+    const targetRow = rowIdx + 1; 
     updates.push({
       range: `${sheetName}!B${targetRow}`,
       values: [[value]],
@@ -174,12 +172,12 @@ export async function updateMonthlySheet(date: Date) {
   }
 }
 
-export async function testSheetsConnection() {
-  const cfg = await prisma.sheetConfig.findFirst();
+export async function testSheetsConnection(userId: string) {
+  const cfg = await prisma.sheetConfig.findUnique({ where: { userId } });
   if (!cfg || !cfg.spreadsheetId) {
     throw new Error("Spreadsheet ID not configured");
   }
-  const sheets = await getSheetsClient();
+  const sheets = await getSheetsClient(userId);
   const meta = await sheets.spreadsheets.get({
     spreadsheetId: cfg.spreadsheetId,
   });
@@ -190,20 +188,23 @@ export async function testSheetsConnection() {
 }
 
 export async function pushAllToSheets({
+  userId,
   bank,
   cc1,
   cc2,
   date,
 }: {
+  userId: string;
   bank: number;
   cc1: number;
   cc2: number;
   date: Date;
 }) {
-  await updateRunningBalance({ bank, cc1, cc2 });
-  await updateMonthlySheet(date);
+  await updateRunningBalance({ userId, bank, cc1, cc2 });
+  await updateMonthlySheet(userId, date);
   await prisma.auditLog.create({
     data: {
+      userId,
       eventType: "sheets_push",
       payload: { date: getMonthKey(date), bank, cc1, cc2 },
     },

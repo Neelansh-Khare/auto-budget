@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function GET() {
-  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
-  const sheet = await prisma.sheetConfig.findFirst();
-  const accounts = await prisma.account.findMany();
+  const session = await getSession();
+  if (!session.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const settings = await prisma.settings.findUnique({ where: { userId: session.userId } });
+  const sheet = await prisma.sheetConfig.findUnique({ where: { userId: session.userId } });
+  const accounts = await prisma.account.findMany({ where: { userId: session.userId } });
+  
   return NextResponse.json({
     settings,
     sheet,
@@ -15,9 +22,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const session = await getSession();
+  if (!session.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json();
   const settings = await prisma.settings.upsert({
-    where: { id: "singleton" },
+    where: { userId: session.userId },
     update: {
       llmEnabled: body.llmEnabled,
       llmProvider: body.llmProvider,
@@ -30,7 +42,7 @@ export async function POST(req: Request) {
       authDisabled: body.authDisabled,
     },
     create: {
-      id: "singleton",
+      userId: session.userId,
       llmEnabled: body.llmEnabled,
       llmProvider: body.llmProvider,
       llmModel: body.llmModel,
@@ -42,16 +54,17 @@ export async function POST(req: Request) {
       authDisabled: body.authDisabled,
     },
   });
+
   if (body.sheet) {
     await prisma.sheetConfig.upsert({
-      where: { id: "singleton" },
+      where: { userId: session.userId },
       update: {
         spreadsheetId: body.sheet.spreadsheetId,
         runningBalanceSheetName: body.sheet.runningBalanceSheetName,
         monthlyNameFormat: body.sheet.monthlyNameFormat,
       },
       create: {
-        id: "singleton",
+        userId: session.userId,
         spreadsheetId: body.sheet.spreadsheetId,
         runningBalanceSheetName: body.sheet.runningBalanceSheetName || "Running Balance",
         monthlyNameFormat: body.sheet.monthlyNameFormat || "{Month} {Year}",
@@ -60,10 +73,12 @@ export async function POST(req: Request) {
       },
     });
   }
+
   if (body.accountRoles) {
     for (const entry of body.accountRoles) {
-      await prisma.account.update({
-        where: { id: entry.id },
+      // Ensure the account belongs to the user before updating
+      await prisma.account.updateMany({
+        where: { id: entry.id, userId: session.userId },
         data: { mappedBalanceRole: entry.role },
       });
     }

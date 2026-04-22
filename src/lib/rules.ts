@@ -6,9 +6,9 @@ export type RuleMatch = {
   ruleId: string;
 };
 
-export async function getEnabledRules() {
+export async function getEnabledRules(userId: string) {
   return prisma.rule.findMany({
-    where: { enabled: true },
+    where: { enabled: true, userId },
     orderBy: { priority: "desc" },
   });
 }

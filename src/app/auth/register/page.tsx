@@ -8,9 +8,10 @@ import { Input } from "@/components/Input";
 import Link from "next/link";
 import { Wallet } from "lucide-react";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -20,16 +21,16 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const resp = await fetch("/api/auth/login", {
+      const resp = await fetch("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
         headers: { "Content-Type": "application/json" },
       });
       if (resp.ok) {
         router.push("/");
       } else {
         const data = await resp.json();
-        setError(data.error || "Login failed");
+        setError(data.error || "Registration failed");
       }
     } catch {
       setError("An unexpected error occurred");
@@ -46,16 +47,24 @@ export default function LoginPage() {
             <Wallet className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">AutoBudgeter</h1>
-          <p className="text-muted-foreground">Welcome back! Please sign in to your account.</p>
+          <p className="text-muted-foreground">Create an account to start tracking your finances.</p>
         </div>
 
         <Card className="border-none shadow-xl bg-background/60 backdrop-blur-xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Sign in</CardTitle>
-            <CardDescription>Enter your email and password below</CardDescription>
+            <CardTitle className="text-xl">Create an account</CardTitle>
+            <CardDescription>Enter your details below to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none">Name (Optional)</label>
+                <Input
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">Email</label>
                 <Input
@@ -67,12 +76,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium leading-none">Password</label>
-                  <button type="button" className="text-xs text-primary hover:underline">
-                    Forgot password?
-                  </button>
-                </div>
+                <label className="text-sm font-medium leading-none">Password</label>
                 <Input
                   type="password"
                   placeholder="••••••••"
@@ -92,14 +96,14 @@ export default function LoginPage() {
                 className="w-full"
                 isLoading={loading}
               >
-                Sign In
+                Create Account
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Don&apos;t have an account? </span>
-              <Link href="/auth/register" className="text-primary font-medium hover:underline">
-                Create an account
+              <span className="text-muted-foreground">Already have an account? </span>
+              <Link href="/auth/login" className="text-primary font-medium hover:underline">
+                Sign in
               </Link>
             </div>
           </CardContent>
@@ -108,4 +112,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

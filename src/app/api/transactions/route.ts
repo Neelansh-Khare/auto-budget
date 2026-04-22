@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TransactionStatus } from "@/generated/prisma/enums";
+import { getSession } from "@/lib/session";
 
 export async function GET(req: Request) {
+  const session = await getSession();
+  if (!session.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const url = new URL(req.url);
   const status = url.searchParams.get("status") || undefined;
   const category = url.searchParams.get("category") || undefined;
@@ -13,6 +19,7 @@ export async function GET(req: Request) {
 
   const transactions = await prisma.transaction.findMany({
     where: {
+      account: { userId: session.userId },
       status: status ? (status as TransactionStatus) : undefined,
       category: category || undefined,
       accountId,
