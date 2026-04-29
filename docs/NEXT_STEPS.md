@@ -40,12 +40,12 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [x] Confidence score visualization
   - Suggested categories based on history
 
-- [ ] **Settings Page Redesign**
+- [x] **Settings Page Redesign**
   - [x] Tabbed interface for better organization
   - [x] Connection status indicators
   - [x] Test connection buttons
-  - Clearer configuration sections
-  - Help tooltips and inline documentation
+  - [x] Clearer configuration sections
+  - [x] Help tooltips and inline documentation
 
 ### User Experience Enhancements
 - [x] **Navigation**
@@ -299,7 +299,7 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
 
 ### Budget Management
 - [ ] **Budget Planning**
-  - [ ] Set monthly budgets per category
+  - [x] Set monthly budgets per category
   - [ ] Budget templates
   - [ ] Budget rollover rules
   - [ ] Annual budget planning

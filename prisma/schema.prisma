@@ -63,6 +63,7 @@ model User {
   name          String?
   accounts      Account[]
   rules         Rule[]
+  categories    Category[]
   sheetConfigs  SheetConfig[]
   settings      Settings[]
   auditLogs     AuditLog[]
@@ -157,6 +158,18 @@ model Settings {
   updatedAt            DateTime         @updatedAt
 
   @@unique([userId])
+}
+
+model Category {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  name          String
+  monthlyBudget Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, name])
 }
 
 model AuditLog {

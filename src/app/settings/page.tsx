@@ -10,6 +10,7 @@ import { Input } from "@/components/Input";
 import { Badge } from "@/components/Badge";
 import { Skeleton } from "@/components/Skeleton";
 import { BALANCE_ROLES } from "@/lib/constants";
+import { Tooltip } from "@/components/Tooltip";
 import { 
   Settings as SettingsIcon, 
   CreditCard, 
@@ -23,10 +24,15 @@ import {
   ExternalLink,
   ShieldCheck,
   Zap,
-  Globe
+  Globe,
+  Info,
+  DollarSign,
+  Plus,
+  Trash2
 } from "lucide-react";
 
 type Account = { id: string; name: string; mappedBalanceRole: string | null };
+type Category = { id?: string; name: string; monthlyBudget: number };
 
 interface Settings {
   exportDestination?: string;
@@ -44,10 +50,11 @@ interface SheetSettings {
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"general" | "accounts" | "integrations">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "accounts" | "integrations" | "budgets">("general");
   const [settings, setSettings] = useState<Settings | null>(null);
   const [sheet, setSheet] = useState<SheetSettings | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [googleUrl, setGoogleUrl] = useState("");
   const [isPlaidConnected, setIsPlaidConnected] = useState(false);
@@ -59,12 +66,17 @@ export default function SettingsPage() {
   const { success, error, info } = useToast();
 
   const load = useCallback(async () => {
-    const data = await fetch("/api/settings").then((r) => r.json());
-    setSettings(data.settings || {});
-    setSheet(data.sheet || {});
-    setAccounts(data.accounts || []);
-    setIsPlaidConnected(data.isPlaidConnected);
-    setIsGoogleConnected(data.isGoogleConnected);
+    const [settingsData, categoriesData] = await Promise.all([
+      fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/categories").then((r) => r.json())
+    ]);
+    
+    setSettings(settingsData.settings || {});
+    setSheet(settingsData.sheet || {});
+    setAccounts(settingsData.accounts || []);
+    setIsPlaidConnected(settingsData.isPlaidConnected);
+    setIsGoogleConnected(settingsData.isGoogleConnected);
+    setCategories(categoriesData.categories || []);
   }, []);
 
   useEffect(() => {
@@ -82,19 +94,27 @@ export default function SettingsPage() {
   async function save() {
     setIsSaving(true);
     try {
-      const resp = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...settings,
-          sheet,
-          accountRoles: accounts.map((a) => ({ id: a.id, role: a.mappedBalanceRole })),
+      const [settingsResp, categoriesResp] = await Promise.all([
+        fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...settings,
+            sheet,
+            accountRoles: accounts.map((a) => ({ id: a.id, role: a.mappedBalanceRole })),
+          }),
         }),
-      });
-      if (resp.ok) {
-        success("Settings saved successfully");
+        fetch("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ categories }),
+        })
+      ]);
+
+      if (settingsResp.ok && categoriesResp.ok) {
+        success("Settings and budgets saved successfully");
       } else {
-        error("Failed to save settings");
+        error("Failed to save some settings");
       }
     } catch {
       error("An error occurred while saving settings");
@@ -187,9 +207,26 @@ export default function SettingsPage() {
     }
   }
 
+  const addCategory = () => {
+    setCategories([...categories, { name: "", monthlyBudget: 0 }]);
+  };
+
+  const removeCategory = (index: number) => {
+    const next = [...categories];
+    next.splice(index, 1);
+    setCategories(next);
+  };
+
+  const updateCategory = (index: number, field: keyof Category, value: string | number) => {
+    const next = [...categories];
+    next[index] = { ...next[index], [field]: value };
+    setCategories(next);
+  };
+
   const tabs = [
     { id: "general", label: "General", icon: SettingsIcon },
     { id: "accounts", label: "Accounts", icon: CreditCard },
+    { id: "budgets", label: "Budgets", icon: DollarSign },
     { id: "integrations", label: "Integrations", icon: Share2 },
   ] as const;
 
@@ -208,14 +245,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b">
+        <div className="flex border-b overflow-x-auto no-scrollbar">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
                   activeTab === tab.id
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -238,7 +275,7 @@ export default function SettingsPage() {
                   <CardTitle className="text-xl">Export Destination</CardTitle>
                 </div>
                 <CardDescription>
-                  Choose where your categorized transactions should be stored. You can switch this at any time.
+                  Determine where your categorized transactions should be archived.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid sm:grid-cols-2 gap-4">
@@ -260,7 +297,12 @@ export default function SettingsPage() {
                       className="text-primary focus:ring-primary h-4 w-4"
                     />
                     <div className="flex flex-col">
-                      <span className="font-bold">Native UI</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold">Native UI</span>
+                        <Tooltip content="Fast and private. Data stays in your local database.">
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </Tooltip>
+                      </div>
                       <span className="text-xs text-muted-foreground">Keep data within AutoBudgeter. Best for speed and privacy.</span>
                     </div>
                   </div>
@@ -283,7 +325,12 @@ export default function SettingsPage() {
                       className="text-primary focus:ring-primary h-4 w-4"
                     />
                     <div className="flex flex-col">
-                      <span className="font-bold">Google Sheets</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold">Google Sheets</span>
+                        <Tooltip content="Great for custom charts, pivot tables, and sharing with others.">
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </Tooltip>
+                      </div>
                       <span className="text-xs text-muted-foreground">Sync to a Google Spreadsheet. Best for custom analysis and sharing.</span>
                     </div>
                   </div>
@@ -297,7 +344,7 @@ export default function SettingsPage() {
                   <Zap className="h-5 w-5 text-primary" />
                   <CardTitle className="text-xl">Automation & Schedule</CardTitle>
                 </div>
-                <CardDescription>Configure how frequently AutoBudgeter should sync with your bank.</CardDescription>
+                <CardDescription>Configure background tasks to keep your data fresh.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30 border border-transparent hover:border-border transition-colors">
@@ -320,12 +367,9 @@ export default function SettingsPage() {
                       <div className="space-y-2 pt-2 animate-in fade-in zoom-in-95 duration-200">
                         <div className="flex items-center gap-1.5">
                           <label className="text-xs font-bold text-muted-foreground uppercase">Cron Schedule</label>
-                          <div className="group relative">
-                            <AlertCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-[10px] rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                              Standard Cron format: minute hour day-of-month month day-of-week.
-                            </div>
-                          </div>
+                          <Tooltip content="Standard Cron format: minute hour day-of-month month day-of-week. '0 9 * * *' means every day at 9 AM UTC.">
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </Tooltip>
                         </div>
                         <Input 
                           value={(settings?.autoSyncCron as string) || "0 9 * * *"}
@@ -348,7 +392,12 @@ export default function SettingsPage() {
                     className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                   />
                   <div className="flex-1 space-y-1.5">
-                    <label htmlFor="autoPush" className="text-sm font-bold leading-none cursor-pointer">Auto-push to Sheets</label>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="autoPush" className="text-sm font-bold leading-none cursor-pointer">Auto-push to Sheets</label>
+                      <Tooltip content="Pushes data immediately after a successful sync. Requires Google Sheets destination to be selected.">
+                         <Info className="h-3 w-3 text-muted-foreground" />
+                      </Tooltip>
+                    </div>
                     <p className="text-xs text-muted-foreground leading-normal">
                       If enabled, data will be pushed to your Google Spreadsheet immediately after each bank sync.
                     </p>
@@ -409,8 +458,13 @@ export default function SettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Account Mapping</CardTitle>
-                <CardDescription>Assign roles to your bank accounts.</CardDescription>
+                <div className="flex items-center gap-2">
+                   <CardTitle className="text-xl">Account Mapping</CardTitle>
+                   <Tooltip content="Map your accounts to specific roles like 'bank' for your main checking, and 'cc1'/'cc2' for your credit cards. These are used for running balance calculations.">
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                   </Tooltip>
+                </div>
+                <CardDescription>Assign roles to your bank accounts for balance tracking.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {accounts.length > 0 ? (
@@ -444,6 +498,78 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground font-medium">No accounts connected.</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Budgets Tab */}
+        {activeTab === "budgets" && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-xl">Category Budgets</CardTitle>
+                  </div>
+                  <CardDescription>Define your monthly spending limits for each category.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={addCategory} leftIcon={Plus}>
+                  Add Category
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-12 gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase">
+                    <div className="col-span-7">Category Name</div>
+                    <div className="col-span-4 text-right">Monthly Budget ($)</div>
+                    <div className="col-span-1"></div>
+                  </div>
+                  <div className="space-y-2">
+                    {categories.map((cat, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-4 items-center animate-in fade-in slide-in-from-left-2 duration-200">
+                        <div className="col-span-7">
+                          <Input 
+                            value={cat.name}
+                            onChange={(e) => updateCategory(i, "name", e.target.value)}
+                            placeholder="e.g. Groceries"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="col-span-4">
+                          <Input 
+                            type="number"
+                            value={cat.monthlyBudget}
+                            onChange={(e) => updateCategory(i, "monthlyBudget", parseFloat(e.target.value) || 0)}
+                            className="h-9 text-right"
+                          />
+                        </div>
+                        <div className="col-span-1 flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => removeCategory(i)}
+                            className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {categories.length === 0 && (
+                      <div className="text-center py-10 border border-dashed rounded-lg text-muted-foreground italic text-sm">
+                        No categories defined. Add one to start budgeting.
+                      </div>
+                    )}
+                  </div>
+                  <div className="pt-4 border-t mt-4 flex justify-between items-center px-2">
+                    <span className="text-sm font-bold">Total Monthly Budget:</span>
+                    <span className="text-lg font-black text-primary">
+                      ${categories.reduce((sum, c) => sum + c.monthlyBudget, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -496,7 +622,12 @@ export default function SettingsPage() {
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Model Identifier</label>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Model Identifier</label>
+                        <Tooltip content="For Gemini, use 'gemini-1.5-flash'. For OpenRouter, use strings like 'google/gemini-flash-1.5'.">
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </Tooltip>
+                      </div>
                       <Input 
                         value={(settings?.llmModel as string) || ""}
                         onChange={(e) => setSettings({ ...settings, llmModel: e.target.value })}
@@ -506,7 +637,12 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2 sm:col-span-2 pt-2">
                       <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Confidence Threshold</label>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Confidence Threshold</label>
+                          <Tooltip content="Transactions with confidence below this value will be sent to the 'Review Queue' instead of being auto-categorized.">
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </Tooltip>
+                        </div>
                         <span className="text-xs font-black">{(settings?.confidenceThreshold as number || 0.8).toFixed(2)}</span>
                       </div>
                       <input
@@ -561,7 +697,12 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Spreadsheet ID</label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Spreadsheet ID</label>
+                    <Tooltip content="Copy the ID from your browser's address bar when you have the spreadsheet open.">
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </Tooltip>
+                  </div>
                   <Input 
                     value={(sheet?.spreadsheetId as string) || ""}
                     onChange={(e) => setSheet({ ...sheet, spreadsheetId: e.target.value })}
