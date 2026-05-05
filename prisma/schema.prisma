@@ -67,8 +67,32 @@ model User {
   sheetConfigs  SheetConfig[]
   settings      Settings[]
   auditLogs     AuditLog[]
+  subscriptions Subscription[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+}
+
+enum RecurringFrequency {
+  monthly
+  yearly
+  weekly
+}
+
+model Subscription {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id])
+  name        String
+  merchant    String?
+  amount      Float
+  frequency   RecurringFrequency @default(monthly)
+  category    String?
+  active      Boolean            @default(true)
+  nextDueDate DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId])
 }
 
 model Account {

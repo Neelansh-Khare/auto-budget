@@ -336,10 +336,10 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Category recommendations
 
 ### Transaction Management
-- [ ] **Recurring Transactions**
-  - [ ] Automatic detection of recurring transactions
-  - [ ] Recurring transaction management
-  - [ ] Subscription tracking
+- [x] **Recurring Transactions**
+  - [x] Automatic detection of recurring transactions
+  - [x] Recurring transaction management
+  - [x] Subscription tracking
   - [ ] Recurring transaction categorization
 
 - [ ] **Transaction Splitting**

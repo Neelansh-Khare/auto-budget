@@ -11,7 +11,8 @@ import {
   Zap, 
   Settings, 
   Activity,
-  Upload
+  Upload,
+  Repeat
 } from "lucide-react";
 
 const links = [
@@ -19,6 +20,7 @@ const links = [
   { href: "/budget", label: "Budget", icon: PieChart },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/review", label: "Needs Review", icon: ClipboardList },
+  { href: "/subscriptions", label: "Subscriptions", icon: Repeat },
   { href: "/rules", label: "Rules", icon: Zap },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/audit", label: "Audit", icon: Activity },
