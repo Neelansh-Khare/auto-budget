@@ -5,7 +5,6 @@ import { Nav } from "@/components/Nav";
 import { Skeleton } from "@/components/Skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { Skeleton } from "@/components/Skeleton";
 import { DateTime } from "luxon";
 import dynamic from "next/dynamic";
 import { 

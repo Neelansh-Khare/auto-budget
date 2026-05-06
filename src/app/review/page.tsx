@@ -52,7 +52,7 @@ export default function ReviewPage() {
         const suggResp = await fetch("/api/transactions/suggestions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transactions: txs.map((t: any) => ({ id: t.id, merchant: t.merchant, description: t.description })) }),
+          body: JSON.stringify({ transactions: txs.map((t: Tx) => ({ id: t.id, merchant: t.merchant, description: t.description })) }),
         });
         if (suggResp.ok) {
           const { suggestions } = await suggResp.json();

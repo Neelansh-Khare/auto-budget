@@ -53,7 +53,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({ subscription: updatedSubscription });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Invalid request data" },
       { status: 400 }
@@ -94,7 +94,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete subscription" },
       { status: 500 }

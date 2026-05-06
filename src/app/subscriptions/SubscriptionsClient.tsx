@@ -37,7 +37,7 @@ export function SubscriptionsClient() {
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setSubscriptions(data.subscriptions || []);
-    } catch (err) {
+    } catch {
       showError("Could not load subscriptions");
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export function SubscriptionsClient() {
       setIsEditing(false);
       setCurrentSub(null);
       fetchSubscriptions();
-    } catch (err) {
+    } catch {
       showError("Failed to save subscription");
     }
   };
@@ -89,7 +89,7 @@ export function SubscriptionsClient() {
       if (!res.ok) throw new Error("Failed to delete");
       success("Subscription deleted");
       fetchSubscriptions();
-    } catch (err) {
+    } catch {
       showError("Failed to delete subscription");
     }
   };
@@ -107,7 +107,7 @@ export function SubscriptionsClient() {
       } else {
         info("No new recurring charges found.");
       }
-    } catch (err) {
+    } catch {
       showError("Error detecting subscriptions");
     } finally {
       setDetecting(false);

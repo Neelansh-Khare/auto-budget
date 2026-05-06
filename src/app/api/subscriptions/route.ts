@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ subscription });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Invalid request data" },
       { status: 400 }
