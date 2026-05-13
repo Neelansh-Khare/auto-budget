@@ -34,11 +34,11 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [x] Export transactions to CSV
 
 - [x] **Review Page Improvements**
-  - Better queue management
-  - Keyboard shortcuts for faster categorization
+  - [x] Better queue management (Sorting by date, amount, confidence)
+  - [x] Keyboard shortcuts for faster categorization (1-3 for suggestions, R for auto-rule)
   - [x] Batch operations UI
   - [x] Confidence score visualization
-  - Suggested categories based on history
+  - [x] Suggested categories based on history (Top 3 most frequent)
 
 - [x] **Settings Page Redesign**
   - [x] Tabbed interface for better organization

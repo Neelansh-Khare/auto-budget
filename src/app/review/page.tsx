@@ -36,9 +36,21 @@ export default function ReviewPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [createRuleMap, setCreateRuleMap] = useState<Map<string, boolean>>(new Map());
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "confidence">("date");
   const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
   const [focusedIndex, setFocusedIndex] = useState(0);
   const { success, error, info } = useToast();
+
+  const filteredItems = items.filter(item => 
+    (item.merchant || item.description).toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === "date") return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === "amount") return b.amountSpendNormalized - a.amountSpendNormalized;
+    if (sortBy === "confidence") return (b.confidence || 0) - (a.confidence || 0);
+    return 0;
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,20 +86,34 @@ export default function ReviewPage() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if (e.key === "j") {
-        setFocusedIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+        setFocusedIndex(prev => Math.min(prev + 1, sortedItems.length - 1));
       } else if (e.key === "k") {
         setFocusedIndex(prev => Math.max(prev - 1, 0));
       } else if (e.key === "x") {
-        const item = filteredItems[focusedIndex];
+        const item = sortedItems[focusedIndex];
         if (item) toggleSelect(item.id);
       } else if (e.key === "i") {
-        const item = filteredItems[focusedIndex];
+        const item = sortedItems[focusedIndex];
         if (item) markIgnored(item.id);
       } else if (e.key === "t") {
-        const item = filteredItems[focusedIndex];
+        const item = sortedItems[focusedIndex];
         if (item) markTransfer(item.id);
+      } else if (e.key === "r") {
+        const item = sortedItems[focusedIndex];
+        if (item) {
+          const next = new Map(createRuleMap);
+          next.set(item.id, !(createRuleMap.get(item.id) || false));
+          setCreateRuleMap(next);
+        }
+      } else if (["1", "2", "3"].includes(e.key)) {
+        const item = sortedItems[focusedIndex];
+        const suggs = suggestions[item?.id || ""];
+        const index = parseInt(e.key) - 1;
+        if (item && suggs && suggs[index]) {
+          update(item.id, suggs[index], "categorized", createRuleMap.get(item.id) || false);
+        }
       } else if (e.key === "Enter") {
-        const item = filteredItems[focusedIndex];
+        const item = sortedItems[focusedIndex];
         if (item && item.category) {
           update(item.id, item.category, "categorized", createRuleMap.get(item.id) || false);
         }
@@ -96,7 +122,7 @@ export default function ReviewPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focusedIndex, items, searchQuery, createRuleMap]);
+  }, [focusedIndex, sortedItems, suggestions, createRuleMap]);
 
   async function update(id: string, category: string, status = "categorized", createRule = false) {
     if (!category) return;
@@ -239,6 +265,18 @@ export default function ReviewPage() {
               </div>
             </div>
             <div className="flex-1 w-full space-y-1.5">
+              <label className="text-sm font-medium">Sort By</label>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="date">Date (Newest)</option>
+                <option value="amount">Amount (Highest)</option>
+                <option value="confidence">Confidence (Lowest)</option>
+              </select>
+            </div>
+            <div className="flex-1 w-full space-y-1.5">
               <label className="text-sm font-medium">Bulk Category</label>
               <Input 
                 placeholder="Assign category to selected..." 
@@ -265,16 +303,23 @@ export default function ReviewPage() {
             onClick={selectAll}
             className="text-sm font-medium text-muted-foreground flex items-center gap-2 hover:text-primary transition-colors"
           >
-            {selected.size === filteredItems.length && filteredItems.length > 0 ? (
+            {selected.size === sortedItems.length && sortedItems.length > 0 ? (
               <CheckSquare className="h-4 w-4 text-primary" />
             ) : (
               <Square className="h-4 w-4" />
             )}
-            Select All {filteredItems.length !== items.length ? `(${filteredItems.length} filtered)` : ''}
+            Select All {sortedItems.length !== items.length ? `(${sortedItems.length} filtered)` : ''}
           </button>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="hidden md:block">Confidence</span>
-            <span className="hidden md:block text-right w-20">Amount</span>
+          <div className="hidden md:flex items-center gap-6 text-xs text-muted-foreground uppercase font-semibold tracking-wider">
+            <div className="flex items-center gap-3">
+              <span>Shortcuts:</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">J/K</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">X</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">1-3</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">R</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">T</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded border">I</span>
+            </div>
           </div>
         </div>
 
@@ -295,7 +340,7 @@ export default function ReviewPage() {
             ))
           ) : (
             <>
-              {filteredItems.map((t, index) => (
+              {sortedItems.map((t, index) => (
                 <Card key={t.id} className={`transition-all ${index === focusedIndex ? 'ring-2 ring-primary border-primary shadow-lg shadow-primary/10' : ''} ${selected.has(t.id) ? 'bg-primary/5' : 'hover:border-primary/50'}`}>
                   <CardContent className="p-4 flex flex-col md:flex-row gap-4">
                     <div className="flex items-start gap-4 flex-1">
@@ -341,13 +386,18 @@ export default function ReviewPage() {
                           <div className="mt-3 flex items-center gap-2">
                             <span className="text-[10px] font-bold uppercase text-muted-foreground">Suggested:</span>
                             <div className="flex flex-wrap gap-1">
-                              {suggestions[t.id].map(cat => (
+                              {suggestions[t.id].map((cat, idx) => (
                                 <button
                                   key={cat}
                                   onClick={() => update(t.id, cat, "categorized", createRuleMap.get(t.id) || false)}
-                                  className="px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground text-xs font-medium transition-colors"
+                                  className="group relative px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground text-xs font-medium transition-colors"
                                 >
                                   {cat}
+                                  {index === focusedIndex && (
+                                    <span className="absolute -top-2 -right-1 bg-background border text-[8px] px-1 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {idx + 1}
+                                    </span>
+                                  )}
                                 </button>
                               ))}
                             </div>
@@ -392,13 +442,14 @@ export default function ReviewPage() {
                               }}
                             />
                             <span className="text-xs font-medium">Auto-rule</span>
+                            {index === focusedIndex && <span className="text-[8px] bg-muted px-1 rounded border ml-1">R</span>}
                           </label>
 
                           <div className="flex gap-1 ml-auto">
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="Mark as Transfer"
+                              title="Mark as Transfer (T)"
                               onClick={() => markTransfer(t.id)}
                             >
                               <ArrowRightLeft className="h-4 w-4" />
@@ -407,7 +458,7 @@ export default function ReviewPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="Ignore Transaction"
+                              title="Ignore Transaction (I)"
                               onClick={() => markIgnored(t.id)}
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
@@ -422,7 +473,7 @@ export default function ReviewPage() {
                 </Card>
               ))}
               
-              {filteredItems.length === 0 && (
+              {sortedItems.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                   <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center">
                     <CheckCircle2 className="h-10 w-10 text-muted-foreground" />
