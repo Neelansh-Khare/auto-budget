@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { categorizeWithLLM } from "@/lib/llm";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function POST() {
+  const session = await getSession();
+  if (!session.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+    const settings = await prisma.settings.findUnique({ where: { userId: session.userId } });
     const provider = settings?.llmProvider;
     if (!provider) {
       throw new Error("LLM provider not configured");

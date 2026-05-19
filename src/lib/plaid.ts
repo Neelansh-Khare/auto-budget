@@ -79,15 +79,16 @@ export async function testPlaidConnection(accessToken: string) {
 export async function storeAccessToken(userId: string, token: string, institutionName: string) {
   const encrypted = encrypt(token);
   await prisma.settings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton" },
+    where: { userId },
+    update: { plaidAccessTokenEnc: encrypted },
+    create: { userId, plaidAccessTokenEnc: encrypted },
   });
 
   await prisma.auditLog.create({
     data: {
+      userId,
       eventType: "plaid_token_stored",
-      payload: { userId, institutionName },
+      payload: { institutionName },
     },
   });
   return encrypted;

@@ -27,7 +27,35 @@ export async function performSync({ userId, pushToSheets }: { userId: string; pu
   });
   const since = anyAccount?.lastSyncedAt ?? undefined;
 
-  const plaidData = await syncFromPlaid({ accessToken, since });
+  let plaidData;
+  try {
+    plaidData = await syncFromPlaid({ accessToken, since });
+    // Clear any previous sync errors on success
+    await prisma.account.updateMany({
+      where: { userId, provider: "plaid" },
+      data: { syncError: null }
+    });
+  } catch (err: any) {
+    const errorType = err?.response?.data?.error_code || "UNKNOWN_ERROR";
+    const errorMessage = err?.response?.data?.error_message || err.message;
+    
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        eventType: "plaid_sync_error",
+        payload: { errorType, errorMessage }
+      }
+    });
+
+    if (errorType === "ITEM_LOGIN_REQUIRED" || errorType === "INVALID_ACCESS_TOKEN" || errorType === "ITEM_NOT_FOUND") {
+      await prisma.account.updateMany({
+        where: { userId, provider: "plaid" },
+        data: { syncError: errorType }
+      });
+    }
+    throw err;
+  }
+
   const now = new Date();
 
   // upsert accounts
@@ -191,13 +219,25 @@ export async function performSync({ userId, pushToSheets }: { userId: string; pu
     (settings.autoPushToSheets && settings.exportDestination === "google_sheets");
 
   if (shouldPushToSheets) {
-    const accounts = await prisma.account.findMany({
-      where: { userId }
-    });
-    const bankBalance = accounts.find((a) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
-    const cc1Balance = accounts.find((a) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;
-    const cc2Balance = accounts.find((a) => a.mappedBalanceRole === "cc2")?.balanceCurrent ?? 0;
-    await pushAllToSheets({ userId, bank: bankBalance, cc1: cc1Balance, cc2: cc2Balance, date: now });
+    try {
+      const accounts = await prisma.account.findMany({
+        where: { userId }
+      });
+      const bankBalance = accounts.find((a) => a.mappedBalanceRole === "bank")?.balanceCurrent ?? 0;
+      const cc1Balance = accounts.find((a) => a.mappedBalanceRole === "cc1")?.balanceCurrent ?? 0;
+      const cc2Balance = accounts.find((a) => a.mappedBalanceRole === "cc2")?.balanceCurrent ?? 0;
+      await pushAllToSheets({ userId, bank: bankBalance, cc1: cc1Balance, cc2: cc2Balance, date: now });
+    } catch (err: any) {
+      console.error("Sheets push failed:", err);
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          eventType: "sheets_push_error",
+          payload: { message: err.message || "Unknown error" },
+        },
+      });
+      // Don't re-throw, we want the transaction ingestion to count as success
+    }
   }
 
   await prisma.auditLog.create({

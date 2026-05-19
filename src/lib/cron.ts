@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import { CronExpressionParser } from "cron-parser";
 import { performSync } from "./sync";
 import { prisma } from "./prisma";
 
@@ -6,43 +7,49 @@ declare global {
   var __cronRegistered: boolean | undefined;
 }
 
-let currentTask: cron.ScheduledTask | null = null;
-
 export function ensureCron() {
   if (global.__cronRegistered) return;
   global.__cronRegistered = true;
   
-  async function setupCron() {
-    const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
-    if (!settings?.autoSyncEnabled) {
-      if (currentTask) {
-        currentTask.stop();
-        currentTask = null;
-      }
-      return;
-    }
-    
-    const cronExpr = settings.autoSyncCron || "0 9 * * *";
-    if (currentTask) {
-      currentTask.stop();
-    }
-    currentTask = cron.schedule(cronExpr, async () => {
+  // Run a dispatcher every minute
+  cron.schedule("* * * * *", async () => {
+    const now = new Date();
+    const oneMinuteAgo = new Date(now.getTime() - 60000);
+
+    const activeSettings = await prisma.settings.findMany({
+      where: { autoSyncEnabled: true },
+    });
+
+    for (const settings of activeSettings) {
       try {
-        // Only push to sheets if auto-push is enabled AND export destination is google_sheets
-        // The sync function will handle the export destination check, but we pass the flag
-        // based on both conditions here for clarity
-        const shouldPush = settings.autoPushToSheets && settings.exportDestination === "google_sheets";
-        await performSync({ pushToSheets: shouldPush });
+        const interval = CronExpressionParser.parse(settings.autoSyncCron || "0 9 * * *");
+        const lastRunPlanned = interval.prev().toDate();
+        
+        // If it was supposed to run in the last minute AND we haven't run it yet (or haven't run it since that planned time)
+        const hasRecentlyRun = settings.lastCronRunAt && settings.lastCronRunAt >= lastRunPlanned;
+
+        if (lastRunPlanned >= oneMinuteAgo && lastRunPlanned <= now && !hasRecentlyRun) {
+           const shouldPush = settings.autoPushToSheets && settings.exportDestination === "google_sheets";
+           
+           // Update lastCronRunAt BEFORE running to prevent race conditions if sync takes long
+           await prisma.settings.update({
+             where: { id: settings.id },
+             data: { lastCronRunAt: now }
+           });
+
+           await performSync({ userId: settings.userId, pushToSheets: shouldPush });
+        }
       } catch (err) {
+        console.error(`Cron error for user ${settings.userId}:`, err);
         await prisma.auditLog.create({
-          data: { eventType: "cron_error", payload: { message: (err as Error).message } },
+          data: { 
+            userId: settings.userId,
+            eventType: "cron_error", 
+            payload: { message: (err as Error).message } 
+          },
         });
       }
-    });
-  }
-  
-  setupCron();
-  // Re-check settings every minute to pick up changes
-  setInterval(setupCron, 60000);
+    }
+  });
 }
 
