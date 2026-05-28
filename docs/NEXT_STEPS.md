@@ -317,8 +317,8 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Goal-based category recommendations
 
 ### Analytics & Reporting
-- [ ] **Spending Analytics**
-  - [ ] Spending trends over time
+- [x] **Spending Analytics**
+  - [x] Spending trends over time
   - [ ] Category comparison charts
   - [ ] Year-over-year comparisons
   - [ ] Spending patterns identification
@@ -347,8 +347,8 @@ This document outlines the roadmap for improving and expanding AutoBudgeter.
   - [ ] Partial categorization
   - [ ] Split transaction editing
 
-- [ ] **Transaction Notes & Tags**
-  - [ ] Add notes to transactions
+- [x] **Transaction Notes & Tags**
+  - [x] Add notes to transactions
   - [ ] Tag system for transactions
   - [ ] Search by tags
   - [ ] Tag-based filtering

@@ -15,9 +15,19 @@ import {
   TrendingUp, 
   AlertCircle,
   BarChart3,
-  CalendarDays
+  CalendarDays,
+  LineChart as LineChartIcon
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const LineChart = dynamic(() => import("recharts").then((mod) => mod.LineChart), { ssr: false });
+const Line = dynamic(() => import("recharts").then((mod) => mod.Line), { ssr: false });
+const XAxis = dynamic(() => import("recharts").then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import("recharts").then((mod) => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import("recharts").then((mod) => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import("recharts").then((mod) => mod.Tooltip), { ssr: false });
+const ResponsiveContainer = dynamic(() => import("recharts").then((mod) => mod.ResponsiveContainer), { ssr: false });
 
 type SummaryItem = {
   category: string;
@@ -26,23 +36,31 @@ type SummaryItem = {
   remaining: number;
 };
 
+type TrendItem = {
+  month: string;
+  amount: number;
+};
+
 export default function Home() {
   const [summary, setSummary] = useState<SummaryItem[]>([]);
+  const [trends, setTrends] = useState<TrendItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [exportDestination, setExportDestination] = useState<string>("native");
   const { success, error, info } = useToast();
 
   useEffect(() => {
-    fetch("/api/categories/summary")
-      .then((r) => r.json())
-      .then((data) => setSummary(data.summary || []))
-      .finally(() => setLoading(false));
-    
-    // Get export destination from settings
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data) => setExportDestination(data.settings?.exportDestination || "native"));
+    Promise.all([
+      fetch("/api/categories/summary").then((r) => r.json()),
+      fetch("/api/analytics/trends").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json())
+    ]).then(([summaryData, trendsData, settingsData]) => {
+      setSummary(summaryData.summary || []);
+      setTrends(trendsData.trends || []);
+      setExportDestination(settingsData.settings?.exportDestination || "native");
+    }).catch(err => {
+      console.error("Dashboard load error:", err);
+    }).finally(() => setLoading(false));
   }, []);
 
   const totals = useMemo(() => {
@@ -67,8 +85,12 @@ export default function Home() {
         success(
           `Sync complete. Ingested ${data.ingested}, categorized ${data.categorized}, needs review ${data.needs_review}`,
         );
-        const refreshed = await fetch("/api/categories/summary").then((r) => r.json());
-        setSummary(refreshed.summary || []);
+        const [refreshedSummary, refreshedTrends] = await Promise.all([
+          fetch("/api/categories/summary").then((r) => r.json()),
+          fetch("/api/analytics/trends").then((r) => r.json())
+        ]);
+        setSummary(refreshedSummary.summary || []);
+        setTrends(refreshedTrends.trends || []);
       } else {
         error(data.error || "Sync failed");
       }
@@ -153,7 +175,7 @@ export default function Home() {
                 <>
                   <div className="text-2xl font-bold text-destructive">${totals.spent.toFixed(2)}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {((totals.spent / totals.budget) * 100).toFixed(1)}% of total budget used
+                    {totals.budget > 0 ? ((totals.spent / totals.budget) * 100).toFixed(1) : 0}% of total budget used
                   </p>
                 </>
               )}
@@ -181,41 +203,87 @@ export default function Home() {
           </Card>
         </div>
 
-        {/* Category Breakdown */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Charts and Details */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
           <Card className="md:col-span-1 lg:col-span-4">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle>Spending Trends</CardTitle>
+                <CardDescription>Your monthly spending over the last 6 months.</CardDescription>
+              </div>
+              <LineChartIcon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="h-[300px] pl-2">
+              {loading ? (
+                <Skeleton className="h-full w-full" />
+              ) : trends.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trends} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="month" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(value) => `$${value}`}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, "Spent"]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                        color: "hsl(var(--popover-foreground))",
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3} 
+                      dot={{ r: 4, fill: "hsl(var(--primary))" }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Not enough data to show trends.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-1 lg:col-span-3">
             <CardHeader>
               <CardTitle>Spending by Category</CardTitle>
-              <CardDescription>
-                Detailed breakdown of your expenses for the current month.
-              </CardDescription>
+              <CardDescription>Current month breakdown.</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {summary.map((item) => {
-                    const percentage = Math.min((item.spent / item.budget) * 100, 100);
-                    const isOverBudget = item.spent > item.budget;
+                <div className="space-y-5">
+                  {summary.slice(0, 5).map((item) => {
+                    const percentage = item.budget > 0 ? Math.min((item.spent / item.budget) * 100, 100) : 0;
+                    const isOverBudget = item.spent > item.budget && item.budget > 0;
                     return (
                       <div key={item.category} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{item.category}</span>
-                            {isOverBudget && (
-                              <Badge variant="destructive" className="h-5">Over Limit</Badge>
-                            )}
-                          </div>
-                          <div className="text-muted-foreground">
-                            <span className="font-medium text-foreground">${item.spent.toFixed(2)}</span> / ${item.budget}
-                          </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium truncate">{item.category}</span>
+                          <span className="text-muted-foreground">${item.spent.toFixed(0)} / ${item.budget}</span>
                         </div>
-                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                           <div 
                             className={`h-full transition-all duration-500 ${
                               isOverBudget ? 'bg-destructive' : percentage > 90 ? 'bg-yellow-500' : 'bg-primary'
@@ -226,12 +294,23 @@ export default function Home() {
                       </div>
                     );
                   })}
+                  {summary.length > 5 && (
+                    <Link href="/budget" className="text-xs text-primary hover:underline font-medium block pt-2 text-center">
+                      View all {summary.length} categories
+                    </Link>
+                  )}
+                  {summary.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No categories set up yet.</p>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
+        </div>
 
-          <Card className="md:col-span-1 lg:col-span-3">
+        {/* Insights and Quick Actions */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="md:col-span-1 lg:col-span-4">
             <CardHeader>
               <CardTitle>Quick Insights</CardTitle>
               <CardDescription>Automated spending observations.</CardDescription>
@@ -241,12 +320,12 @@ export default function Home() {
                 <Skeleton className="h-24 w-full" />
               ) : (
                 <>
-                  {summary.some(s => s.spent > s.budget) ? (
+                  {summary.some(s => s.spent > s.budget && s.budget > 0) ? (
                     <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive flex gap-3">
                       <AlertCircle className="h-5 w-5 shrink-0" />
                       <div>
                         <p className="text-sm font-semibold">Spending Alert</p>
-                        <p className="text-xs opacity-90">You have exceeded your budget in {summary.filter(s => s.spent > s.budget).length} categories.</p>
+                        <p className="text-xs opacity-90">You have exceeded your budget in {summary.filter(s => s.spent > s.budget && s.budget > 0).length} categories.</p>
                       </div>
                     </div>
                   ) : (
@@ -261,30 +340,50 @@ export default function Home() {
                   
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Top Spending Category</p>
-                    {summary.length > 0 && (
+                    {summary.length > 0 ? (
                       <div className="flex items-center justify-between p-3 rounded-md bg-muted/50">
                         <span className="text-sm">{[...summary].sort((a, b) => b.spent - a.spent)[0].category}</span>
                         <span className="text-sm font-bold">${[...summary].sort((a, b) => b.spent - a.spent)[0].spent.toFixed(2)}</span>
                       </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No data available.</p>
                     )}
-                  </div>
-
-                  <div className="pt-4 border-t flex flex-col gap-2">
-                    <Link 
-                      href="/review"
-                      className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
-                    >
-                      Review Recent Transactions
-                    </Link>
-                    <Link 
-                      href="/settings"
-                      className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
-                    >
-                      Configure Connections
-                    </Link>
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-1 lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Manage your finances.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Link 
+                href="/review"
+                className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
+              >
+                Review Recent Transactions
+              </Link>
+              <Link 
+                href="/transactions"
+                className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
+              >
+                View Transaction History
+              </Link>
+              <Link 
+                href="/subscriptions"
+                className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
+              >
+                Manage Subscriptions
+              </Link>
+              <Link 
+                href="/settings"
+                className={`${buttonVariants.base} ${buttonVariants.variant.outline} ${buttonVariants.size.sm} justify-start`}
+              >
+                App Settings
+              </Link>
             </CardContent>
           </Card>
         </div>

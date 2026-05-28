@@ -5,7 +5,9 @@ import { Readable } from "stream";
 import { v4 as uuidv4 } from 'uuid';
 import { AccountProvider, AccountType, TransactionStatus } from "@/generated/prisma/enums";
 import { Prisma } from "@/generated/prisma";
-import { Buffer } from 'buffer'; // Add this import
+import { Buffer } from 'buffer';
+import { getSession } from "@/lib/session";
+import crypto from 'crypto';
 
 // Define expected CSV headers and their mapping to Transaction fields
 const CSV_HEADERS = {
@@ -24,20 +26,28 @@ function normalizeAmount(amountStr: string, typeStr?: string): number {
   }
 
   // Basic logic for debit/credit columns or amount sign
-  // Assuming 'Debit' column means positive expense, 'Credit' means negative expense (income/refund)
-  // Or if only one 'Amount' column, assume positive is expense, negative is income/refund
   if (typeStr && typeStr.toLowerCase() === "credit") {
-    amount = -Math.abs(amount); // Ensure credit is negative
+    amount = -Math.abs(amount);
   } else {
-    amount = Math.abs(amount); // Ensure debit/expense is positive
+    amount = Math.abs(amount);
   }
 
   return amount;
 }
 
+function generateStableId(row: any, userId: string): string {
+  const content = JSON.stringify(row) + userId;
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.userId;
+
     const formData = await request.formData();
     const file = formData.get("file") as Blob | null;
 
@@ -60,19 +70,20 @@ export async function POST(request: Request) {
       raw: Prisma.InputJsonValue;
     }> = [];
 
-    // Ensure a CSV account exists or create one
+    // Ensure a CSV account exists or create one for THIS user
     let csvAccount = await prisma.account.findFirst({
-      where: { provider: AccountProvider.csv },
+      where: { userId, provider: AccountProvider.csv, name: "Manual CSV Account" },
     });
 
     if (!csvAccount) {
       csvAccount = await prisma.account.create({
         data: {
+          userId,
           provider: AccountProvider.csv,
-          providerAccountId: uuidv4(), // Unique ID for this CSV account
+          providerAccountId: uuidv4(),
           name: "Manual CSV Account",
           type: AccountType.other,
-          balanceCurrent: 0, // Default to 0, can be updated later
+          balanceCurrent: 0,
         },
       });
     }
@@ -86,34 +97,27 @@ export async function POST(request: Request) {
           let descriptionStr: string | undefined;
           let amountStr: string | undefined;
           let merchantStr: string | undefined;
-          let typeStr: string | undefined; // For debit/credit parsing
+          let typeStr: string | undefined;
 
-          // Find date
           for (const key of CSV_HEADERS.date) {
             if (row[key]) {
               dateStr = row[key];
               break;
             }
           }
-          // Find description
           for (const key of CSV_HEADERS.description) {
             if (row[key]) {
               descriptionStr = row[key];
               break;
             }
           }
-          // Find amount and type
           for (const key of CSV_HEADERS.amount) {
-            if (row[key] !== undefined && row[key] !== null) {
-              // If there are separate debit/credit columns, the one with value is the amount
-              if (row[key] !== "") { // Check if the cell has a value
-                 amountStr = row[key];
-                 typeStr = key; // Use the header as the type
-                 break;
-              }
+            if (row[key] !== undefined && row[key] !== null && row[key] !== "") {
+              amountStr = row[key];
+              typeStr = key;
+              break;
             }
           }
-          // Find merchant
           for (const key of CSV_HEADERS.merchant) {
             if (row[key]) {
               merchantStr = row[key];
@@ -121,29 +125,25 @@ export async function POST(request: Request) {
             }
           }
 
-
-          if (!dateStr || !descriptionStr || !amountStr) {
-            console.warn("Skipping row due to missing essential data:", row);
-            return; // Skip rows without essential data
-          }
+          if (!dateStr || !descriptionStr || !amountStr) return;
 
           try {
             const date = new Date(dateStr);
             const amountSpendNormalized = normalizeAmount(amountStr, typeStr);
 
             transactions.push({
-              providerTransactionId: uuidv4(), // Generate unique ID for each CSV transaction
+              providerTransactionId: generateStableId(row, userId),
               accountId: accountId,
               date: date,
               amountSpendNormalized: amountSpendNormalized,
               merchant: merchantStr || null,
               description: descriptionStr,
-              pending: false, // CSVs are usually settled transactions
+              pending: false,
               status: TransactionStatus.uncategorized,
-              raw: row as Prisma.InputJsonValue, // Store original CSV row
+              raw: row as Prisma.InputJsonValue,
             });
           } catch (e: unknown) {
-            console.error("Error processing row:", row, e instanceof Error ? e.message : String(e));
+            console.error("Error processing row:", row, e);
           }
         })
         .on("end", resolve)
@@ -153,16 +153,16 @@ export async function POST(request: Request) {
     if (transactions.length > 0) {
       await prisma.transaction.createMany({
         data: transactions,
-        skipDuplicates: true, // In case providerTransactionId clashes, though uuidv4 should prevent
+        skipDuplicates: true,
       });
     }
 
     return NextResponse.json({
-      message: `Successfully uploaded ${transactions.length} transactions.`,
+      message: `Successfully processed ${transactions.length} transactions.`,
       accountId: accountId,
     });
   } catch (error: unknown) {
     console.error("CSV Upload Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to upload CSV." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to upload CSV." }, { status: 500 });
   }
 }

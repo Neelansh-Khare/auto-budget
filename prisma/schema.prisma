@@ -126,6 +126,7 @@ model Transaction {
   description              String
   pending                  Boolean               @default(false)
   category                 String?
+  notes                    String?
   confidence               Float?
   status                   TransactionStatus     @default(uncategorized)
   categorizationSource     CategorizationSource?

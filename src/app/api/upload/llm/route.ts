@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { AccountProvider, AccountType, TransactionStatus } from "@/generated/prisma/enums";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
+import { getSession } from "@/lib/session";
+import crypto from 'crypto';
 
 // Define the expected structure of a single transaction from the LLM
 const LLMTransactionSchema = z.object({
@@ -13,13 +15,23 @@ const LLMTransactionSchema = z.object({
   merchant: z.string().optional().describe("Name of the merchant, if identifiable."),
 });
 
-// Define the schema for the LLM's full response (an array of transactions)
 const LLMTransactionsResponseSchema = z.object({
   transactions: z.array(LLMTransactionSchema).describe("An array of extracted transactions."),
 });
 
+function generateStableId(tx: any, userId: string): string {
+  const content = JSON.stringify(tx) + userId;
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.userId;
+
     const formData = await request.formData();
     const file = formData.get("file") as Blob | null;
 
@@ -32,19 +44,19 @@ export async function POST(request: Request) {
     }
 
     const fileContent = await file.text();
-
     if (!fileContent) {
         return NextResponse.json({ error: "File is empty or content could not be read." }, { status: 400 });
     }
 
-    // Ensure an LLM Imported Account exists or create one
+    // Ensure an LLM Imported Account exists or create one for THIS user
     let llmAccount = await prisma.account.findFirst({
-      where: { provider: AccountProvider.csv, name: "LLM Imported Account" }, // Reusing 'csv' provider for now
+      where: { userId, provider: AccountProvider.csv, name: "LLM Imported Account" },
     });
 
     if (!llmAccount) {
       llmAccount = await prisma.account.create({
         data: {
+          userId,
           provider: AccountProvider.csv,
           providerAccountId: uuidv4(),
           name: "LLM Imported Account",
@@ -65,7 +77,6 @@ export async function POST(request: Request) {
     
     JSON Output:`;
 
-    // Use Gemini API for LLM extraction
     const apiKey = process.env.GEMINI_API_KEY;
     const modelName = process.env.GEMINI_MODEL;
     if (!apiKey || !modelName) {
@@ -88,12 +99,11 @@ export async function POST(request: Request) {
         llmParsedData = LLMTransactionsResponseSchema.parse(JSON.parse(llmRawResponse));
     } catch (parseError: unknown) {
         console.error("LLM Response Parsing Error:", parseError);
-        const errorMessage = parseError instanceof Error ? parseError.message : "Unknown parsing error";
-        return NextResponse.json({ error: "Failed to parse LLM response.", details: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: "Failed to parse LLM response." }, { status: 500 });
     }
 
     const transactionsToCreate = llmParsedData.transactions.map(tx => ({
-        providerTransactionId: uuidv4(),
+        providerTransactionId: generateStableId(tx, userId),
         accountId: accountId,
         date: new Date(tx.date),
         amountSpendNormalized: tx.amount,
@@ -101,7 +111,7 @@ export async function POST(request: Request) {
         description: tx.description,
         pending: false,
         status: TransactionStatus.uncategorized,
-        raw: tx, // Store original LLM extracted data
+        raw: tx,
     }));
 
     if (transactionsToCreate.length > 0) {
@@ -117,7 +127,7 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("LLM Statement Upload Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Failed to upload statement for LLM processing.";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: "Failed to upload statement." }, { status: 500 });
   }
 }
+

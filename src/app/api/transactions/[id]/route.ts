@@ -15,7 +15,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { category, status, create_rule } = body;
+  const { category, status, create_rule, notes } = body;
 
   const tx = await prisma.transaction.findFirst({
     where: { id, account: { userId: session.userId } },
@@ -29,6 +29,7 @@ export async function PATCH(
     data: {
       category: category ?? tx.category,
       status: status ?? tx.status,
+      notes: notes !== undefined ? notes : tx.notes,
       needsReview: status === "needs_review",
       categorizationSource: "manual",
     },

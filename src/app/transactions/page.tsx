@@ -23,6 +23,7 @@ type Tx = {
   amountSpendNormalized: number;
   category: string | null;
   status: string;
+  notes: string | null;
   confidence: number | null;
 };
 
@@ -84,27 +85,26 @@ export default function TransactionsPage() {
     setSortConfig({ key, direction });
   };
 
-  async function updateCategory(id: string, category: string) {
-    if (!category) return;
+  async function updateTransaction(id: string, updates: Partial<Tx>) {
     await fetch(`/api/transactions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, status: "categorized" }),
+      body: JSON.stringify(updates),
     });
-    // Update local state to avoid full reload
-    setTransactions(prev => prev.map(t => t.id === id ? { ...t, category, status: "categorized" } : t));
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   }
 
   function handleExportCsv() {
     if (transactions.length === 0) return;
 
-    const headers = ["Date", "Merchant", "Description", "Amount", "Category", "Status", "Confidence"];
+    const headers = ["Date", "Merchant", "Description", "Amount", "Category", "Notes", "Status", "Confidence"];
     const rows = sortedTransactions.map((t) => [
       new Date(t.date).toLocaleDateString(),
       t.merchant || "",
       `"${t.description.replace(/"/g, '""')}"`,
       t.amountSpendNormalized.toFixed(2),
       t.category || "",
+      `"${(t.notes || "").replace(/"/g, '""')}"`,
       t.status,
       t.confidence ? (t.confidence * 100).toFixed(0) + "%" : "",
     ]);
@@ -222,6 +222,7 @@ export default function TransactionsPage() {
                       </div>
                     </th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
+                    <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Notes</th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
                     <th className="h-10 px-4 text-center align-middle font-medium text-muted-foreground hidden md:table-cell">Conf.</th>
                   </tr>
@@ -234,6 +235,7 @@ export default function TransactionsPage() {
                         <td className="p-4"><Skeleton className="h-4 w-32" /></td>
                         <td className="p-4 hidden lg:table-cell"><Skeleton className="h-4 w-48" /></td>
                         <td className="p-4 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                        <td className="p-4"><Skeleton className="h-8 w-32" /></td>
                         <td className="p-4"><Skeleton className="h-8 w-32" /></td>
                         <td className="p-4"><Skeleton className="h-5 w-20" /></td>
                         <td className="p-4 hidden md:table-cell"><Skeleton className="h-4 w-8 mx-auto" /></td>
@@ -259,9 +261,20 @@ export default function TransactionsPage() {
                             className="h-8 text-xs w-32 md:w-40" 
                             defaultValue={t.category || ""}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') updateCategory(t.id, (e.target as HTMLInputElement).value);
+                              if (e.key === 'Enter') updateTransaction(t.id, { category: (e.target as HTMLInputElement).value, status: "categorized" });
                             }}
-                            onBlur={(e) => updateCategory(t.id, e.target.value)}
+                            onBlur={(e) => updateTransaction(t.id, { category: (e.target as HTMLInputElement).value, status: "categorized" })}
+                          />
+                        </td>
+                        <td className="p-4 align-middle">
+                          <Input 
+                            className="h-8 text-xs w-32 md:w-40" 
+                            defaultValue={t.notes || ""}
+                            placeholder="Add notes..."
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') updateTransaction(t.id, { notes: (e.target as HTMLInputElement).value });
+                            }}
+                            onBlur={(e) => updateTransaction(t.id, { notes: (e.target as HTMLInputElement).value })}
                           />
                         </td>
                         <td className="p-4 align-middle">
